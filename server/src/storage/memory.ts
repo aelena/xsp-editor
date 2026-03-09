@@ -2,14 +2,17 @@ import type {
   StorageAdapter,
   ListPromptsOptions,
   ListPromptsResult,
+  ListConstraintsOptions,
 } from "./adapter.js";
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
+import type { ConstraintRecord } from "../schemas/constraints.js";
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private prompts = new Map<string, PromptRecord>();
   private versions = new Map<string, PromptVersionRecord[]>();
   private tags = new Map<string, TagRecord>();
+  private constraints = new Map<string, ConstraintRecord>();
 
   async createPrompt(prompt: PromptRecord): Promise<void> {
     this.prompts.set(prompt.id, { ...prompt });
@@ -121,10 +124,54 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.tags.delete(name);
   }
 
+  // Constraint CRUD
+  async createConstraint(constraint: ConstraintRecord): Promise<void> {
+    this.constraints.set(constraint.id, { ...constraint });
+  }
+
+  async getConstraint(id: string): Promise<ConstraintRecord | null> {
+    const constraint = this.constraints.get(id);
+    return constraint ? { ...constraint } : null;
+  }
+
+  async updateConstraint(
+    id: string,
+    updates: Partial<ConstraintRecord>,
+  ): Promise<void> {
+    const existing = this.constraints.get(id);
+    if (!existing) throw new Error(`Constraint ${id} not found`);
+    this.constraints.set(id, { ...existing, ...updates });
+  }
+
+  async listConstraints(
+    options?: ListConstraintsOptions,
+  ): Promise<ConstraintRecord[]> {
+    let results = Array.from(this.constraints.values());
+
+    if (options?.severity) {
+      results = results.filter((c) => c.severity === options.severity);
+    }
+    if (options?.category) {
+      results = results.filter((c) => c.category === options.category);
+    }
+    if (options?.status) {
+      results = results.filter((c) => c.status === options.status);
+    }
+
+    return results
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((c) => ({ ...c }));
+  }
+
+  async deleteConstraint(id: string): Promise<void> {
+    this.constraints.delete(id);
+  }
+
   // Test helper
   clear(): void {
     this.prompts.clear();
     this.versions.clear();
     this.tags.clear();
+    this.constraints.clear();
   }
 }

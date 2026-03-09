@@ -1,5 +1,18 @@
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
+import type { ConstraintRecord } from "../schemas/constraints.js";
+
+export interface ListConstraintsOptions {
+  severity?: "critical" | "high" | "medium" | "low";
+  category?:
+    | "content"
+    | "safety"
+    | "style"
+    | "structural"
+    | "evidence"
+    | "output";
+  status?: "active" | "deprecated" | "retired";
+}
 
 export interface ListPromptsOptions {
   page: number;
@@ -35,4 +48,16 @@ export interface StorageAdapter {
   updateTag(name: string, updates: Partial<TagRecord>): Promise<void>;
   listTags(): Promise<TagRecord[]>;
   deleteTag(name: string): Promise<void>;
+
+  // Constraint CRUD (Table Storage)
+  createConstraint(constraint: ConstraintRecord): Promise<void>;
+  getConstraint(id: string): Promise<ConstraintRecord | null>;
+  updateConstraint(
+    id: string,
+    updates: Partial<ConstraintRecord>,
+  ): Promise<void>;
+  listConstraints(
+    options?: ListConstraintsOptions,
+  ): Promise<ConstraintRecord[]>;
+  deleteConstraint(id: string): Promise<void>;
 }

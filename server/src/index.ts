@@ -3,6 +3,7 @@ import { loadConfig } from "./config.js";
 import { MemoryStorageAdapter } from "./storage/memory.js";
 import { registerPromptRoutes } from "./routes/prompts.js";
 import { registerTagRoutes } from "./routes/tags.js";
+import { registerConstraintRoutes } from "./routes/constraints.js";
 import type { StorageAdapter } from "./storage/adapter.js";
 
 export function buildApp(storage?: StorageAdapter) {
@@ -11,6 +12,7 @@ export function buildApp(storage?: StorageAdapter) {
 
   registerPromptRoutes(app, adapter);
   registerTagRoutes(app, adapter);
+  registerConstraintRoutes(app, adapter);
 
   return app;
 }

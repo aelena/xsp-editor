@@ -1,4 +1,5 @@
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
+import type { TagRecord } from "../schemas/tags.js";
 
 export interface ListPromptsOptions {
   page: number;
@@ -27,4 +28,11 @@ export interface StorageAdapter {
   saveVersion(version: PromptVersionRecord): Promise<void>;
   getVersion(promptId: string, version: string): Promise<PromptVersionRecord | null>;
   listVersions(promptId: string): Promise<PromptVersionRecord[]>;
+
+  // Tag CRUD (Table Storage)
+  createTag(tag: TagRecord): Promise<void>;
+  getTag(name: string): Promise<TagRecord | null>;
+  updateTag(name: string, updates: Partial<TagRecord>): Promise<void>;
+  listTags(): Promise<TagRecord[]>;
+  deleteTag(name: string): Promise<void>;
 }

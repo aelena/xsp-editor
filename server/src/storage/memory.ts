@@ -4,10 +4,12 @@ import type {
   ListPromptsResult,
 } from "./adapter.js";
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
+import type { TagRecord } from "../schemas/tags.js";
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private prompts = new Map<string, PromptRecord>();
   private versions = new Map<string, PromptVersionRecord[]>();
+  private tags = new Map<string, TagRecord>();
 
   async createPrompt(prompt: PromptRecord): Promise<void> {
     this.prompts.set(prompt.id, { ...prompt });
@@ -93,9 +95,36 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return versions.map((v) => ({ ...v }));
   }
 
+  // Tag CRUD
+  async createTag(tag: TagRecord): Promise<void> {
+    this.tags.set(tag.name, { ...tag });
+  }
+
+  async getTag(name: string): Promise<TagRecord | null> {
+    const tag = this.tags.get(name);
+    return tag ? { ...tag } : null;
+  }
+
+  async updateTag(name: string, updates: Partial<TagRecord>): Promise<void> {
+    const existing = this.tags.get(name);
+    if (!existing) throw new Error(`Tag ${name} not found`);
+    this.tags.set(name, { ...existing, ...updates });
+  }
+
+  async listTags(): Promise<TagRecord[]> {
+    return Array.from(this.tags.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => ({ ...t }));
+  }
+
+  async deleteTag(name: string): Promise<void> {
+    this.tags.delete(name);
+  }
+
   // Test helper
   clear(): void {
     this.prompts.clear();
     this.versions.clear();
+    this.tags.clear();
   }
 }

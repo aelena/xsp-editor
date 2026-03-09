@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import PromptList from './pages/PromptList.tsx'
 import PromptEditor from './pages/PromptEditor.tsx'
 import TagRegistry from './pages/TagRegistry.tsx'
+import ConstraintLibrary from './pages/ConstraintLibrary.tsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/prompts/new" element={<PromptEditor />} />
           <Route path="/prompts/:id/edit" element={<PromptEditor />} />
           <Route path="/tags" element={<TagRegistry />} />
+          <Route path="/constraints" element={<ConstraintLibrary />} />
           <Route path="/" element={<Navigate to="/prompts" replace />} />
         </Routes>
       </BrowserRouter>

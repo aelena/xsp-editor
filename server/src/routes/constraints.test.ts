@@ -44,11 +44,11 @@ describe("POST /api/v1/constraints", () => {
 
   it("should default status to active", async () => {
     const { app } = createTestApp();
-    const { status, ...withoutStatus } = sampleConstraint;
+    const { id, description, severity, category, owner, xml_block } = sampleConstraint;
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/constraints",
-      payload: withoutStatus,
+      payload: { id, description, severity, category, owner, xml_block },
     });
 
     expect(res.statusCode).toBe(201);
@@ -57,11 +57,11 @@ describe("POST /api/v1/constraints", () => {
 
   it("should default owner to empty string", async () => {
     const { app } = createTestApp();
-    const { owner, ...withoutOwner } = sampleConstraint;
+    const { id, description, severity, category, status, xml_block } = sampleConstraint;
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/constraints",
-      payload: withoutOwner,
+      payload: { id, description, severity, category, status, xml_block },
     });
 
     expect(res.statusCode).toBe(201);

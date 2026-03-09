@@ -4,6 +4,7 @@ import { MemoryStorageAdapter } from "./storage/memory.js";
 import { registerPromptRoutes } from "./routes/prompts.js";
 import { registerTagRoutes } from "./routes/tags.js";
 import { registerConstraintRoutes } from "./routes/constraints.js";
+import { registerVerifyRoutes } from "./routes/verify.js";
 import type { StorageAdapter } from "./storage/adapter.js";
 
 export function buildApp(storage?: StorageAdapter) {
@@ -13,6 +14,7 @@ export function buildApp(storage?: StorageAdapter) {
   registerPromptRoutes(app, adapter);
   registerTagRoutes(app, adapter);
   registerConstraintRoutes(app, adapter);
+  registerVerifyRoutes(app, adapter);
 
   return app;
 }

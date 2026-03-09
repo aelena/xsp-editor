@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/ --ext .ts"
+    "lint": "eslint src/"
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0",

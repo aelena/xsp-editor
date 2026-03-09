@@ -95,7 +95,6 @@ describe('PromptList', () => {
   })
 
   it('shows empty search result message', async () => {
-    // First render with results
     fetchSpy = mockFetch({ prompts: [], total: 0, page: 1, limit: 20 })
 
     const user = userEvent.setup()
@@ -207,5 +206,114 @@ describe('PromptList', () => {
 
     expect(screen.queryByText('Previous')).not.toBeInTheDocument()
     expect(screen.queryByText('Next')).not.toBeInTheDocument()
+  })
+
+  it('sends author filter parameter', async () => {
+    fetchSpy = mockFetch({ prompts: [], total: 0, page: 1, limit: 20 })
+
+    const user = userEvent.setup()
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    const authorInput = screen.getByPlaceholderText('Filter by author...')
+    await user.type(authorInput, 'alice')
+
+    await waitFor(() => {
+      const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
+      expect(lastCall[0]).toContain('author=alice')
+    })
+  })
+
+  it('sends tag filter parameter', async () => {
+    fetchSpy = mockFetch({ prompts: [], total: 0, page: 1, limit: 20 })
+
+    const user = userEvent.setup()
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    const tagInput = screen.getByPlaceholderText('Filter by tag...')
+    await user.type(tagInput, 'task')
+
+    await waitFor(() => {
+      const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
+      expect(lastCall[0]).toContain('tag=task')
+    })
+  })
+
+  it('renders quick action links for each prompt', async () => {
+    const prompts = [
+      makePrompt({ id: 'abc-123', name: 'test-prompt' }),
+    ]
+    fetchSpy = mockFetch({ prompts, total: 1, page: 1, limit: 20 })
+
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('test-prompt')).toBeInTheDocument()
+    })
+
+    const editLink = screen.getByRole('link', { name: 'Edit' })
+    expect(editLink).toHaveAttribute('href', '/prompts/abc-123/edit')
+
+    const changelogLink = screen.getByRole('link', { name: 'Changelog' })
+    expect(changelogLink).toHaveAttribute('href', '/prompts/abc-123/versions')
+
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument()
+  })
+
+  it('calls create API when clicking Duplicate', async () => {
+    const prompt = makePrompt({ id: 'abc-123', name: 'my-prompt', description: 'A prompt', content: '<task>Do it</task>' })
+    fetchSpy = mockFetch({ prompts: [prompt], total: 1, page: 1, limit: 20 })
+
+    const user = userEvent.setup()
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('my-prompt')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Duplicate' }))
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (call) => {
+          const opts = call[1] as RequestInit | undefined
+          return opts?.method === 'POST'
+        },
+      )
+      expect(postCalls.length).toBe(1)
+      const body = JSON.parse(postCalls[0][1]?.body as string)
+      expect(body.name).toBe('my-prompt-copy')
+      expect(body.content).toBe('<task>Do it</task>')
+    })
+  })
+
+  it('resets page to 1 when author filter changes', async () => {
+    const prompts = Array.from({ length: 20 }, (_, i) =>
+      makePrompt({ id: `id-${i}`, name: `prompt-${i}` }),
+    )
+    fetchSpy = mockFetch({ prompts, total: 45, page: 1, limit: 20 })
+
+    const user = userEvent.setup()
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('Next')).toBeInTheDocument()
+    })
+
+    // Go to page 2
+    await user.click(screen.getByText('Next'))
+    await waitFor(() => {
+      const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
+      expect(lastCall[0]).toContain('page=2')
+    })
+
+    // Type in author filter - should reset to page 1
+    const authorInput = screen.getByPlaceholderText('Filter by author...')
+    await user.type(authorInput, 'b')
+
+    await waitFor(() => {
+      const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
+      expect(lastCall[0]).toContain('page=1')
+      expect(lastCall[0]).toContain('author=b')
+    })
   })
 })

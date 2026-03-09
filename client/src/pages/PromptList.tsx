@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { usePrompts } from '../api/prompts.ts'
+import { Link } from 'react-router-dom'
+import { usePrompts, useCreatePrompt } from '../api/prompts.ts'
 import type { Prompt } from '../api/prompts.ts'
 
 const STATUS_STYLES: Record<
@@ -39,6 +40,8 @@ function formatDate(iso: string): string {
 
 export default function PromptList() {
   const [search, setSearch] = useState('')
+  const [authorFilter, setAuthorFilter] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
 
@@ -46,7 +49,11 @@ export default function PromptList() {
     page,
     limit,
     search: search || undefined,
+    author: authorFilter || undefined,
+    tag: tagFilter || undefined,
   })
+
+  const createPrompt = useCreatePrompt()
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0
 
@@ -62,7 +69,7 @@ export default function PromptList() {
           </div>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           <input
             type="text"
             placeholder="Search prompts..."
@@ -72,6 +79,26 @@ export default function PromptList() {
               setPage(1)
             }}
             className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:max-w-md"
+          />
+          <input
+            type="text"
+            placeholder="Filter by author..."
+            value={authorFilter}
+            onChange={(e) => {
+              setAuthorFilter(e.target.value)
+              setPage(1)
+            }}
+            className="block rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
+          />
+          <input
+            type="text"
+            placeholder="Filter by tag..."
+            value={tagFilter}
+            onChange={(e) => {
+              setTagFilter(e.target.value)
+              setPage(1)
+            }}
+            className="block rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
           />
         </div>
 
@@ -116,6 +143,9 @@ export default function PromptList() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                       Last Modified
                     </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -140,6 +170,37 @@ export default function PromptList() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {formatDate(prompt.updated_at)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            to={`/prompts/${prompt.id}/edit`}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() =>
+                              createPrompt.mutate({
+                                name: `${prompt.name}-copy`,
+                                description: prompt.description,
+                                content: prompt.content,
+                                author: prompt.author,
+                                variables: prompt.variables,
+                                metadata: prompt.metadata,
+                              })
+                            }
+                            className="text-gray-600 hover:text-gray-800 font-medium"
+                          >
+                            Duplicate
+                          </button>
+                          <Link
+                            to={`/prompts/${prompt.id}/versions`}
+                            className="text-gray-600 hover:text-gray-800 font-medium"
+                          >
+                            Changelog
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

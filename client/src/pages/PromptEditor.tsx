@@ -256,6 +256,7 @@ export default function PromptEditor() {
               value={content}
               onChange={handleContentChange}
               tags={tags}
+              verification={verification}
             />
           </div>
         </main>

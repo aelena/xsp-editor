@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { EditorView, keymap, placeholder } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
+import { EditorView, keymap, placeholder, Decoration, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
+import { EditorState, type Extension } from '@codemirror/state'
 import { xml } from '@codemirror/lang-xml'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
@@ -8,7 +8,6 @@ import {
   autocompletion,
   completionKeymap,
   type CompletionContext,
-  type CompletionResult,
 } from '@codemirror/autocomplete'
 import {
   bracketMatching,
@@ -19,43 +18,79 @@ import {
 } from '@codemirror/language'
 import { lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
 import { highlightActiveLine } from '@codemirror/view'
+import { linter, type Diagnostic } from '@codemirror/lint'
 import type { Tag } from '../api/tags.ts'
+import type { VerificationResult } from '../api/verify.ts'
+import { buildTagCompletion, findCheckPosition } from './xml-editor-utils.ts'
 
 interface XmlEditorProps {
   value: string
   onChange: (value: string) => void
   tags: Tag[]
+  verification?: VerificationResult | null
 }
 
-function buildTagCompletion(tags: Tag[]) {
-  return function tagCompletion(
-    context: CompletionContext,
-  ): CompletionResult | null {
-    // Match after '<' for opening tags or '</' for closing tags
-    const openTag = context.matchBefore(/<\/?[\w_-]*/)
-    if (!openTag) return null
+// Decoration for $variable highlighting in the editor
+const variableMark = Decoration.mark({ class: 'cm-xsp-variable' })
 
-    const text = openTag.text
-    const isClosing = text.startsWith('</')
+const variableHighlighter = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet
 
-    const options = tags.map((tag) => ({
-      label: tag.name,
-      type: 'keyword' as const,
-      info: tag.purpose,
-      apply: isClosing
-        ? `${tag.name}>`
-        : `${tag.name}>`,
-    }))
-
-    return {
-      from: openTag.from + (isClosing ? 2 : 1),
-      options,
-      validFor: /^[\w_-]*$/,
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view)
     }
-  }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view)
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const decorations: { from: number; to: number }[] = []
+      const doc = view.state.doc.toString()
+      const regex = /\$[a-zA-Z_]\w*/g
+      let match
+      while ((match = regex.exec(doc)) !== null) {
+        decorations.push({ from: match.index, to: match.index + match[0].length })
+      }
+      return Decoration.set(
+        decorations.map((d) => variableMark.range(d.from, d.to)),
+      )
+    }
+  },
+  { decorations: (v) => v.decorations },
+)
+
+// Build lint diagnostics from verification results
+function buildLintSource(verificationRef: React.RefObject<VerificationResult | null | undefined>) {
+  return linter((view) => {
+    const result = verificationRef.current
+    if (!result) return []
+
+    const diagnostics: Diagnostic[] = []
+    const doc = view.state.doc.toString()
+
+    for (const check of result.checks) {
+      if (check.status === 'passed') continue
+
+      const severity = check.status === 'failed' ? 'error' : 'warning'
+      const position = findCheckPosition(doc, check.rule, check.message)
+
+      diagnostics.push({
+        from: position.from,
+        to: position.to,
+        severity,
+        message: `${check.rule}: ${check.message}`,
+      })
+    }
+
+    return diagnostics
+  }, { delay: 0 })
 }
 
-export default function XmlEditor({ value, onChange, tags }: XmlEditorProps) {
+export default function XmlEditor({ value, onChange, tags, verification }: XmlEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -63,6 +98,9 @@ export default function XmlEditor({ value, onChange, tags }: XmlEditorProps) {
 
   const tagsRef = useRef(tags)
   tagsRef.current = tags
+
+  const verificationRef = useRef<VerificationResult | null | undefined>(verification)
+  verificationRef.current = verification
 
   const tagCompletion = useCallback(
     (context: CompletionContext) => buildTagCompletion(tagsRef.current)(context),
@@ -72,73 +110,83 @@ export default function XmlEditor({ value, onChange, tags }: XmlEditorProps) {
   useEffect(() => {
     if (!editorRef.current) return
 
-    const state = EditorState.create({
-      doc: value,
-      extensions: [
-        lineNumbers(),
-        highlightActiveLineGutter(),
-        highlightActiveLine(),
-        history(),
-        foldGutter(),
-        bracketMatching(),
-        highlightSelectionMatches(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        xml(),
-        autocompletion({
-          override: [tagCompletion],
-        }),
-        placeholder('Enter your XSP prompt XML here...'),
-        keymap.of([
-          ...defaultKeymap,
-          ...historyKeymap,
-          ...searchKeymap,
-          ...completionKeymap,
-          ...foldKeymap,
-          {
-            key: 'Ctrl-Shift-c',
-            run: (view) => {
-              const { from, to } = view.state.selection.main
-              const selected = view.state.sliceDoc(from, to)
-              if (selected) {
-                view.dispatch({
-                  changes: {
-                    from,
-                    to,
-                    insert: `<constraint>${selected}</constraint>`,
-                  },
-                })
-                return true
-              }
-              return false
-            },
-          },
-          {
-            key: 'Ctrl-Shift-d',
-            run: (view) => {
-              const { from, to } = view.state.selection.main
-              const selected = view.state.sliceDoc(from, to)
+    const extensions: Extension[] = [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightActiveLine(),
+      history(),
+      foldGutter(),
+      bracketMatching(),
+      highlightSelectionMatches(),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      xml(),
+      autocompletion({
+        override: [tagCompletion],
+      }),
+      variableHighlighter,
+      buildLintSource(verificationRef),
+      placeholder('Enter your XSP prompt XML here...'),
+      keymap.of([
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...searchKeymap,
+        ...completionKeymap,
+        ...foldKeymap,
+        {
+          key: 'Ctrl-Shift-c',
+          run: (view) => {
+            const { from, to } = view.state.selection.main
+            const selected = view.state.sliceDoc(from, to)
+            if (selected) {
               view.dispatch({
                 changes: {
                   from,
                   to,
-                  insert: `<![CDATA[${selected}]]>`,
+                  insert: `<constraint>${selected}</constraint>`,
                 },
               })
               return true
-            },
+            }
+            return false
           },
-        ]),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onChangeRef.current(update.state.doc.toString())
-          }
-        }),
-        EditorView.theme({
-          '&': { height: '100%' },
-          '.cm-scroller': { overflow: 'auto' },
-          '.cm-content': { fontFamily: 'monospace', fontSize: '14px' },
-        }),
-      ],
+        },
+        {
+          key: 'Ctrl-Shift-d',
+          run: (view) => {
+            const { from, to } = view.state.selection.main
+            const selected = view.state.sliceDoc(from, to)
+            view.dispatch({
+              changes: {
+                from,
+                to,
+                insert: `<![CDATA[${selected}]]>`,
+              },
+            })
+            return true
+          },
+        },
+      ]),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChangeRef.current(update.state.doc.toString())
+        }
+      }),
+      EditorView.theme({
+        '&': { height: '100%' },
+        '.cm-scroller': { overflow: 'auto' },
+        '.cm-content': { fontFamily: 'monospace', fontSize: '14px' },
+        '.cm-xsp-variable': {
+          backgroundColor: '#dbeafe',
+          color: '#1e40af',
+          borderRadius: '2px',
+          padding: '0 1px',
+        },
+      }),
+    ]
+
+    const state = EditorState.create({
+      doc: value,
+      extensions,
     })
 
     const view = new EditorView({
@@ -167,6 +215,13 @@ export default function XmlEditor({ value, onChange, tags }: XmlEditorProps) {
       })
     }
   }, [value])
+
+  // Force lint refresh when verification results change
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({})
+  }, [verification])
 
   return (
     <div

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import PromptList from './pages/PromptList.tsx'
+import PromptEditor from './pages/PromptEditor.tsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +18,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/prompts" element={<PromptList />} />
+          <Route path="/prompts/new" element={<PromptEditor />} />
+          <Route path="/prompts/:id/edit" element={<PromptEditor />} />
           <Route path="/" element={<Navigate to="/prompts" replace />} />
         </Routes>
       </BrowserRouter>

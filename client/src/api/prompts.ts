@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client.ts'
 
 export interface Prompt {
@@ -48,5 +48,62 @@ export function usePrompts(params: ListPromptsParams = {}) {
     queryKey: ['prompts', params],
     queryFn: () =>
       apiFetch<ListPromptsResponse>(`/prompts${buildQueryString(params)}`),
+  })
+}
+
+export function usePrompt(id: string | undefined) {
+  return useQuery({
+    queryKey: ['prompt', id],
+    queryFn: () => apiFetch<Prompt>(`/prompts/${id}`),
+    enabled: !!id,
+  })
+}
+
+export interface CreatePromptRequest {
+  name: string
+  description: string
+  content: string
+  author?: string
+  variables?: Record<string, { description: string; required?: boolean }>
+  metadata?: Record<string, string>
+}
+
+export interface UpdatePromptRequest {
+  name?: string
+  description?: string
+  content?: string
+  version_bump?: 'major' | 'minor' | 'patch'
+  changelog_summary?: string
+  author?: string
+  variables?: Record<string, { description: string; required?: boolean }>
+  metadata?: Record<string, string>
+}
+
+export function useCreatePrompt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreatePromptRequest) =>
+      apiFetch<Prompt>('/prompts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+    },
+  })
+}
+
+export function useUpdatePrompt(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: UpdatePromptRequest) =>
+      apiFetch<Prompt>(`/prompts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['prompt', id] })
+    },
   })
 }

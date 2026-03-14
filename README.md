@@ -6,10 +6,10 @@ XSP is a prompting methodology that wraps each part of an LLM prompt in labeled 
 
 ## What it does
 
-- **Author** XSP prompts with a CodeMirror-based XML editor featuring syntax highlighting, tag autocomplete from an approved vocabulary, `$variable` highlighting, and CDATA insertion shortcuts
+- **Author** XSP prompts with a CodeMirror-based XML editor featuring syntax highlighting, tag autocomplete from an approved vocabulary, `$variable` highlighting, and `CDATA` insertion shortcuts
 - **Validate** prompts in real-time against structural rules derived from the book: required tags, nesting depth, empty sections, constraint conflicts, pseudo-programming detection, and anti-pattern scoring
-- **Manage** a tag vocabulary registry and reusable constraint library aligned with the VCO framework (Vocabulary, Constraints, Output contracts)
-- **Test** prompts against real LLMs via BYOK (Bring Your Own Key) integration with Anthropic, OpenAI, Azure OpenAI, or any OpenAI-compatible endpoint
+- **Manage** a tag vocabulary registry and reusable constraint library aligned with the __VCO framework__ (Vocabulary, Constraints, Output contracts). See the book for further details on that framework.
+- **Test** prompts against real LLMs via _BYOK (Bring Your Own Key)_ integration with Anthropic, OpenAI, Azure OpenAI, or any OpenAI-compatible endpoint
 - **Render** prompt templates with variable substitution and token estimation
 
 ## Quick start
@@ -52,7 +52,7 @@ The current implementation uses an in-memory storage adapter. All data is seeded
 
 ## LLM integration
 
-The editor supports BYOK (Bring Your Own Key) LLM testing:
+The editor supports _BYOK (Bring Your Own Key)_ LLM testing:
 
 1. Go to **Settings** and configure your provider, model, and API key
 2. Open the **Playground**, paste or write an XSP prompt

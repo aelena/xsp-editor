@@ -7,7 +7,12 @@ import {
 } from '../api/prompts.ts'
 import { useTags } from '../api/tags.ts'
 import { useConstraints } from '../api/constraints.ts'
-import { verifyContent } from '../api/verify.ts'
+import {
+  verifyContent,
+  verifyFix,
+  isVerificationFixable,
+  type CheckResult,
+} from '../api/verify.ts'
 import { useFileTree, useSaveFile, useFileContent } from '../api/files.ts'
 import { useGitStatus, useGitCommit } from '../api/projects.ts'
 import { useEditorStore } from '../store/editor.ts'
@@ -81,6 +86,10 @@ export default function PromptEditor() {
   const [showCommitDialog, setShowCommitDialog] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
 
+  // Verification fix state
+  const [fixingRule, setFixingRule] = useState<string | null>(null)
+  const [fixError, setFixError] = useState<string | null>(null)
+
   // New file dialog
   const [showNewFile, setShowNewFile] = useState(false)
   const [newFileName, setNewFileName] = useState('')
@@ -126,35 +135,81 @@ export default function PromptEditor() {
 
   // Debounced verification
   const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function buildDetectedVars(xmlContent: string): Record<string, { description: string }> {
+    const varRegex = /\$([a-zA-Z_][a-zA-Z0-9_]*)/g
+    const detected: Record<string, { description: string }> = {}
+    let m
+    while ((m = varRegex.exec(xmlContent)) !== null) {
+      detected[m[1]] = { description: 'Template variable' }
+    }
+    return detected
+  }
+
   const runVerification = useCallback(
-    (xmlContent: string) => {
+    (
+      xmlContent: string,
+      variablesOverride?: Record<string, { description: string; required?: boolean }>,
+      immediate = false,
+    ) => {
       if (verifyTimerRef.current) {
         clearTimeout(verifyTimerRef.current)
+        verifyTimerRef.current = null
       }
       if (!xmlContent.trim()) {
         setVerification(null)
         return
       }
-      verifyTimerRef.current = setTimeout(async () => {
+      const vars = variablesOverride ?? buildDetectedVars(xmlContent)
+      const doVerify = async () => {
         setIsVerifying(true)
         try {
-          // Auto-document detected variables so variable_docs check is useful
-          const varRegex = /\$([a-zA-Z_][a-zA-Z0-9_]*)/g
-          const detectedVars: Record<string, { description: string }> = {}
-          let m
-          while ((m = varRegex.exec(xmlContent)) !== null) {
-            detectedVars[m[1]] = { description: 'Template variable' }
-          }
-          const result = await verifyContent({ content: xmlContent, variables: detectedVars })
+          const result = await verifyContent({
+            content: xmlContent,
+            variables: vars,
+          })
           setVerification(result)
         } catch {
           // Verification failures are non-fatal
         } finally {
           setIsVerifying(false)
         }
-      }, 500)
+      }
+      if (immediate) {
+        doVerify()
+      } else {
+        verifyTimerRef.current = setTimeout(doVerify, 500)
+      }
     },
     [setVerification, setIsVerifying],
+  )
+
+  const handleVerificationFix = useCallback(
+    async (check: CheckResult) => {
+      if (!content.trim()) return
+      setFixingRule(check.rule)
+      setFixError(null)
+      try {
+        const vars = buildDetectedVars(content)
+        const result = await verifyFix({
+          content,
+          rule: check.rule,
+          message: check.message,
+          variables: vars,
+        })
+        if (result.content !== undefined) {
+          setContent(result.content)
+          runVerification(result.content, undefined, true)
+        } else if (result.variables !== undefined) {
+          runVerification(content, result.variables, true)
+        }
+      } catch (err) {
+        setFixError(err instanceof Error ? err.message : 'Fix failed')
+      } finally {
+        setFixingRule(null)
+      }
+    },
+    [content, setContent, runVerification],
   )
 
   const handleContentChange = useCallback(
@@ -551,6 +606,10 @@ export default function PromptEditor() {
             <VerificationPanel
               result={verification}
               isVerifying={isVerifying}
+              onFix={handleVerificationFix}
+              fixingRule={fixingRule}
+              fixError={fixError}
+              onDismissFixError={() => setFixError(null)}
             />
           </div>
 

@@ -264,3 +264,85 @@ describe("POST /api/v1/verify", () => {
     expect(approvedCheck.message).toContain("custom_unknown");
   });
 });
+
+describe("POST /api/v1/verify/fix", () => {
+  it("should fix empty_sections by removing empty tags", async () => {
+    const { app } = createTestApp();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/verify/fix",
+      payload: {
+        content: "<task>Do stuff</task><examples></examples><notes>  </notes>",
+        rule: "empty_sections",
+        message: "Empty sections found: examples, notes",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.content).toBeDefined();
+    expect(body.content).not.toContain("<examples></examples>");
+    expect(body.content).not.toContain("<notes>  </notes>");
+    expect(body.content).toContain("<task>Do stuff</task>");
+  });
+
+  it("should fix cdata_for_input by wrapping content in CDATA", async () => {
+    const { app } = createTestApp();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/verify/fix",
+      payload: {
+        content: "<task>Do</task><input>user content here</input>",
+        rule: "cdata_for_input",
+        message: "Input sections without CDATA",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.content).toContain("<![CDATA[user content here]]>");
+  });
+
+  it("should fix variable_docs by adding stub descriptions", async () => {
+    const { app } = createTestApp();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/verify/fix",
+      payload: {
+        content: "<task>Process $order_id</task>",
+        rule: "variable_docs",
+        message: "Undocumented variables: $order_id",
+        variables: {},
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.variables).toBeDefined();
+    expect(body.variables.order_id).toEqual({
+      description: "Template variable",
+      required: true,
+    });
+  });
+
+  it("should return 400 for non-fixable rule", async () => {
+    const { app } = createTestApp();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/verify/fix",
+      payload: {
+        content: "<task>Do</task>",
+        rule: "nesting_depth",
+        message: "Maximum nesting depth exceeds limit",
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.error).toContain("does not support auto-fix");
+  });
+});

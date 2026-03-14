@@ -32,3 +32,32 @@ export function verifyContent(request: VerifyRequest): Promise<VerificationResul
     body: JSON.stringify(request),
   })
 }
+
+export interface VerifyFixRequest {
+  content: string
+  rule: string
+  message: string
+  variables?: Record<string, { description: string; required?: boolean }>
+}
+
+export interface VerifyFixResponse {
+  content?: string
+  variables?: Record<string, { description: string; required?: boolean }>
+}
+
+export function verifyFix(request: VerifyFixRequest): Promise<VerifyFixResponse> {
+  return apiFetch<VerifyFixResponse>('/verify/fix', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export const FIXABLE_VERIFICATION_RULES = new Set([
+  'empty_sections',
+  'cdata_for_input',
+  'variable_docs',
+])
+
+export function isVerificationFixable(rule: string): boolean {
+  return FIXABLE_VERIFICATION_RULES.has(rule)
+}

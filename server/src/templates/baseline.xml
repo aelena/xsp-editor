@@ -1,0 +1,32 @@
+<task>
+  $task_description
+</task>
+
+<context>
+  $context_information
+</context>
+
+<constraints>
+  <constraint id="$constraint_id" severity="$severity">
+    $constraint_text
+  </constraint>
+</constraints>
+
+<input>
+  <![CDATA[$user_input]]>
+</input>
+
+<output_format>
+  $output_format_description
+</output_format>
+
+<examples>
+  <example>
+    <input>$example_input</input>
+    <output>$example_output</output>
+  </example>
+</examples>
+
+<checks>
+  <check>$check_description</check>
+</checks>

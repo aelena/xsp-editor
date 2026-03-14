@@ -56,19 +56,19 @@ function TagFormModal({
   const [form, setForm] = useState<TagFormData>(initial)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="tag-form-modal">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" data-testid="tag-form-modal">
+      <div className="w-full max-w-lg rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl dark:shadow-gray-900/50">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
 
         {error && (
-          <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <div className="mt-3 rounded-md bg-red-50 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-300" role="alert">
             {error}
           </div>
         )}
 
         <div className="mt-4 space-y-4">
           <div>
-            <label htmlFor="tag-name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="tag-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Tag Name
             </label>
             <input
@@ -78,12 +78,12 @@ function TagFormModal({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               disabled={isNameDisabled}
               placeholder="e.g. task"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
             />
           </div>
 
           <div>
-            <label htmlFor="tag-purpose" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="tag-purpose" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Purpose
             </label>
             <input
@@ -92,12 +92,12 @@ function TagFormModal({
               value={form.purpose}
               onChange={(e) => setForm({ ...form, purpose: e.target.value })}
               placeholder="What this tag is used for"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label htmlFor="tag-use-when" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="tag-use-when" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Use When
             </label>
             <input
@@ -106,12 +106,12 @@ function TagFormModal({
               value={form.use_when}
               onChange={(e) => setForm({ ...form, use_when: e.target.value })}
               placeholder="When to use this tag"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label htmlFor="tag-example" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="tag-example" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Example
             </label>
             <textarea
@@ -120,19 +120,19 @@ function TagFormModal({
               onChange={(e) => setForm({ ...form, example: e.target.value })}
               placeholder="<task>Summarize the document</task>"
               rows={2}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label htmlFor="tag-enforcement" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="tag-enforcement" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Enforcement
             </label>
             <select
               id="tag-enforcement"
               value={form.enforcement}
               onChange={(e) => setForm({ ...form, enforcement: e.target.value as Tag['enforcement'] })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:text-gray-100"
             >
               {ENFORCEMENT_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
@@ -146,7 +146,7 @@ function TagFormModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
@@ -228,17 +228,17 @@ export default function TagRegistry() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900">Tag Registry</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tag Registry</h1>
               <Link to="/prompts" className="text-sm text-blue-600 hover:text-blue-800">
                 Back to Prompts
               </Link>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Manage the approved tag vocabulary for XSP prompts
             </p>
           </div>
@@ -261,76 +261,76 @@ export default function TagRegistry() {
             placeholder="Search tags..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:max-w-md"
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:max-w-md"
           />
         </div>
 
         <div className="mt-6">
           {isLoading && (
-            <div className="py-12 text-center text-sm text-gray-500" role="status">
+            <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
               Loading tags...
             </div>
           )}
 
           {isError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300" role="alert">
               Failed to load tags: {error instanceof Error ? error.message : 'Unknown error'}
             </div>
           )}
 
           {data && filteredTags.length === 0 && (
             <div className="py-12 text-center" data-testid="empty-state">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {search ? 'No tags match your search.' : 'No tags yet. Add your first tag to get started.'}
               </p>
             </div>
           )}
 
           {data && filteredTags.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-900/50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Tag
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Purpose
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Enforcement
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Usage
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Example
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredTags.map((tag) => (
-                    <tr key={tag.name} className="hover:bg-gray-50">
+                    <tr key={tag.name} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-medium font-mono text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-sm font-medium font-mono text-blue-700 dark:text-blue-300 ring-1 ring-blue-700/10 dark:ring-blue-400/20 ring-inset">
                           &lt;{tag.name}&gt;
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{tag.purpose}</div>
-                        <div className="mt-1 text-xs text-gray-500">{tag.use_when}</div>
+                        <div className="text-sm text-gray-900 dark:text-gray-100">{tag.purpose}</div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{tag.use_when}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <EnforcementBadge enforcement={tag.enforcement} />
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {tag.usage_count} {tag.usage_count === 1 ? 'prompt' : 'prompts'}
                       </td>
                       <td className="px-6 py-4">
-                        <code className="text-xs text-gray-600 line-clamp-2">{tag.example}</code>
+                        <code className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{tag.example}</code>
                       </td>
                       <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
                         <div className="flex justify-end gap-2">

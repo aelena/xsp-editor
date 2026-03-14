@@ -24,7 +24,7 @@ function StatusBadge({ status }: { status: Prompt['verification_status'] }) {
 
 function VersionBadge({ version }: { version: string }) {
   return (
-    <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+    <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-700/10 dark:ring-blue-400/20 ring-inset">
       v{version}
     </span>
   )
@@ -58,12 +58,12 @@ export default function PromptList() {
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="sm:flex sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Prompts</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Prompts</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Manage your XSP prompt templates
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function PromptList() {
               setSearch(e.target.value)
               setPage(1)
             }}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:max-w-md"
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:max-w-md"
           />
           <input
             type="text"
@@ -88,7 +88,7 @@ export default function PromptList() {
               setAuthorFilter(e.target.value)
               setPage(1)
             }}
-            className="block rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
+            className="block rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
           />
           <input
             type="text"
@@ -98,64 +98,64 @@ export default function PromptList() {
               setTagFilter(e.target.value)
               setPage(1)
             }}
-            className="block rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
+            className="block rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-48"
           />
         </div>
 
         <div className="mt-6">
           {isLoading && (
-            <div className="py-12 text-center text-sm text-gray-500" role="status">
+            <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
               Loading prompts...
             </div>
           )}
 
           {isError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-700 dark:text-red-300" role="alert">
               Failed to load prompts: {error instanceof Error ? error.message : 'Unknown error'}
             </div>
           )}
 
           {data && data.prompts.length === 0 && (
             <div className="py-12 text-center" data-testid="empty-state">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {search ? 'No prompts match your search.' : 'No prompts yet. Create your first prompt to get started.'}
               </p>
             </div>
           )}
 
           {data && data.prompts.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-900/50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Name
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Version
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Status
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Author
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Last Modified
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400 uppercase">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {data.prompts.map((prompt) => (
-                    <tr key={prompt.id} className="hover:bg-gray-50">
+                    <tr key={prompt.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {prompt.name}
                         </div>
-                        <div className="mt-1 text-sm text-gray-500 line-clamp-1">
+                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
                           {prompt.description}
                         </div>
                       </td>
@@ -165,10 +165,10 @@ export default function PromptList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={prompt.verification_status} />
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {prompt.author}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {formatDate(prompt.updated_at)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
@@ -190,13 +190,13 @@ export default function PromptList() {
                                 metadata: prompt.metadata,
                               })
                             }
-                            className="text-gray-600 hover:text-gray-800 font-medium"
+                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium"
                           >
                             Duplicate
                           </button>
                           <Link
                             to={`/prompts/${prompt.id}/versions`}
-                            className="text-gray-600 hover:text-gray-800 font-medium"
+                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium"
                           >
                             Changelog
                           </Link>
@@ -211,21 +211,21 @@ export default function PromptList() {
 
           {data && totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 Page {data.page} of {totalPages} ({data.total} total)
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>

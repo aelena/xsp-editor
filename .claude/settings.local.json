@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 10 npx tsx:*)",
+      "Bash(netstat:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx vite:*)",
+      "Bash(cd:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(lsof -ti:5998 -ti:5999)",
+      "Bash(xargs kill:*)",
+      "Bash(while read:*)",
+      "Bash(do taskkill:*)",
+      "Bash(done)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 5998,5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Output 'done'\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Output 'done'\")",
+      "Bash(powershell -File - <<'PS1'\nGet-NetTCPConnection -LocalPort 5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\nWrite-Output 'done'\nPS1)"
+    ]
+  }
+}

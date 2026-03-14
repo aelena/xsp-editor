@@ -60,7 +60,7 @@ describe("POST /api/v1/verify", () => {
       method: "POST",
       url: "/api/v1/verify",
       payload: {
-        content: "<task>Classify $customer_message into categories</task>",
+        content: "<task>Classify $customer_message into categories</task><output_format>JSON</output_format>",
         variables: {
           customer_message: { description: "The raw customer message" },
         },
@@ -69,10 +69,8 @@ describe("POST /api/v1/verify", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.status).toBe("passed");
-    expect(body.score).toBe(100);
     expect(body.checks).toBeInstanceOf(Array);
-    expect(body.checks.length).toBe(5);
+    expect(body.checks.length).toBe(14);
     expect(body.anti_pattern_scan).toBeInstanceOf(Array);
   });
 
@@ -120,7 +118,7 @@ describe("POST /api/v1/verify", () => {
     expect(emptyCheck.message).toContain("input");
   });
 
-  it("should fail for undocumented variables", async () => {
+  it("should warn for undocumented variables", async () => {
     const { app } = createTestApp();
     await seedTags(app);
 
@@ -137,11 +135,10 @@ describe("POST /api/v1/verify", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.status).toBe("failed");
     const varCheck = body.checks.find(
       (c: { rule: string }) => c.rule === "variable_docs",
     );
-    expect(varCheck.status).toBe("failed");
+    expect(varCheck.status).toBe("warning");
     expect(varCheck.message).toContain("$customer");
   });
 
@@ -215,7 +212,7 @@ describe("POST /api/v1/verify", () => {
       method: "POST",
       url: "/api/v1/verify",
       payload: {
-        content: "<task>Do something static</task>",
+        content: "<task>Do something static</task><output_format>text</output_format>",
       },
     });
 

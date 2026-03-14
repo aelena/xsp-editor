@@ -7,12 +7,14 @@ import type {
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
+import type { TemplateRecord } from "../schemas/templates.js";
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private prompts = new Map<string, PromptRecord>();
   private versions = new Map<string, PromptVersionRecord[]>();
   private tags = new Map<string, TagRecord>();
   private constraints = new Map<string, ConstraintRecord>();
+  private templates = new Map<string, TemplateRecord>();
 
   async createPrompt(prompt: PromptRecord): Promise<void> {
     this.prompts.set(prompt.id, { ...prompt });
@@ -167,11 +169,38 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.constraints.delete(id);
   }
 
+  // Template CRUD
+  async createTemplate(template: TemplateRecord): Promise<void> {
+    this.templates.set(template.name, { ...template });
+  }
+
+  async getTemplate(name: string): Promise<TemplateRecord | null> {
+    const template = this.templates.get(name);
+    return template ? { ...template } : null;
+  }
+
+  async updateTemplate(name: string, updates: Partial<TemplateRecord>): Promise<void> {
+    const existing = this.templates.get(name);
+    if (!existing) throw new Error(`Template ${name} not found`);
+    this.templates.set(name, { ...existing, ...updates });
+  }
+
+  async listTemplates(): Promise<TemplateRecord[]> {
+    return Array.from(this.templates.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => ({ ...t }));
+  }
+
+  async deleteTemplate(name: string): Promise<void> {
+    this.templates.delete(name);
+  }
+
   // Test helper
   clear(): void {
     this.prompts.clear();
     this.versions.clear();
     this.tags.clear();
     this.constraints.clear();
+    this.templates.clear();
   }
 }

@@ -182,6 +182,18 @@ export default function XmlEditor({ value, onChange, tags, verification }: XmlEd
           padding: '0 1px',
         },
       }),
+      EditorView.theme({
+        '&': { backgroundColor: '#111827', color: '#e5e7eb' },
+        '.cm-gutters': { backgroundColor: '#1f2937', color: '#9ca3af', borderRight: '1px solid #374151' },
+        '.cm-activeLineGutter': { backgroundColor: '#374151' },
+        '.cm-activeLine': { backgroundColor: '#1f293766' },
+        '.cm-selectionBackground': { backgroundColor: '#2563eb44 !important' },
+        '.cm-cursor': { borderLeftColor: '#60a5fa' },
+        '.cm-xsp-variable': {
+          backgroundColor: '#1e3a5f',
+          color: '#93c5fd',
+        },
+      }, { dark: true }),
     ]
 
     const state = EditorState.create({
@@ -227,7 +239,7 @@ export default function XmlEditor({ value, onChange, tags, verification }: XmlEd
     <div
       ref={editorRef}
       data-testid="xml-editor"
-      className="h-full border border-gray-300 rounded overflow-hidden"
+      className="h-full border border-gray-300 dark:border-gray-600 rounded overflow-hidden"
     />
   )
 }

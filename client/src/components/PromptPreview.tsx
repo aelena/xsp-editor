@@ -7,7 +7,7 @@ export default function PromptPreview({ content }: PromptPreviewProps) {
     return (
       <div
         data-testid="prompt-preview"
-        className="p-4 text-gray-400 text-sm"
+        className="p-4 text-gray-400 dark:text-gray-500 text-sm"
       >
         Start typing to see a preview of your prompt.
       </div>
@@ -20,11 +20,11 @@ export default function PromptPreview({ content }: PromptPreviewProps) {
   return (
     <pre
       data-testid="prompt-preview"
-      className="p-4 text-sm font-mono whitespace-pre-wrap break-words overflow-auto"
+      className="p-4 text-sm font-mono whitespace-pre-wrap break-words overflow-auto text-gray-900 dark:text-gray-100"
     >
       {parts.map((part, i) =>
         part.startsWith('$') ? (
-          <span key={i} className="bg-blue-100 text-blue-800 px-0.5 rounded">
+          <span key={i} className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-0.5 rounded">
             {part}
           </span>
         ) : (

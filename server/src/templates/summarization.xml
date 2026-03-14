@@ -1,0 +1,29 @@
+<task>
+  Summarize the provided input for the specified audience, respecting all constraints.
+</task>
+
+<audience>
+  $target_audience
+</audience>
+
+<constraints>
+  <constraint id="GEN-001" severity="critical">
+    No fabricated information — only what is in the provided input.
+  </constraint>
+  <constraint id="GEN-003" severity="medium">
+    No preamble or meta-commentary in output.
+  </constraint>
+  <constraint id="$additional_constraint_id" severity="$severity">
+    $additional_constraint_text
+  </constraint>
+</constraints>
+
+<input>
+  <![CDATA[$document_to_summarize]]>
+</input>
+
+<output_format>
+  Length: $max_length
+  Structure: $structure_requirements
+  Format: $output_format
+</output_format>

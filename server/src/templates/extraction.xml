@@ -1,0 +1,37 @@
+<task>
+  Extract structured data from the provided input according to the field definitions below.
+</task>
+
+<fields>
+  <field name="$field_name" type="$field_type" required="$is_required">
+    $field_description
+  </field>
+</fields>
+
+<constraints>
+  <constraint id="GEN-001" severity="critical">
+    Only extract information explicitly present in the input — do not fabricate or infer.
+  </constraint>
+  <constraint id="FORMAT-002" severity="medium">
+    Use null for unknown fields, empty array for no results.
+  </constraint>
+</constraints>
+
+<input>
+  <![CDATA[$raw_input]]>
+</input>
+
+<output_format>
+  Return a JSON object with the following schema:
+  {
+    "$field_name": "$field_type or null"
+  }
+  No markdown fences. No extra text. Only valid JSON.
+</output_format>
+
+<examples>
+  <example>
+    <input>$example_input</input>
+    <output>$example_output_json</output>
+  </example>
+</examples>

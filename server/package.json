@@ -4,16 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@azure/data-tables": "^13.3.0",
-    "@azure/storage-blob": "^12.26.0",
     "fastify": "^5.2.1",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"

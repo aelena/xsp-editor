@@ -179,7 +179,7 @@ describe("checkVariableDocs", () => {
     expect(result.status).toBe("passed");
   });
 
-  it("should fail when variables are undocumented", () => {
+  it("should warn when variables are undocumented", () => {
     const content = "<task>Process $customer_message for $order_id</task>";
     const context = makeContext({
       documentedVariables: {
@@ -187,7 +187,7 @@ describe("checkVariableDocs", () => {
       },
     });
     const result = checkVariableDocs(content, context);
-    expect(result.status).toBe("failed");
+    expect(result.status).toBe("warning");
     expect(result.message).toContain("$order_id");
   });
 
@@ -197,17 +197,17 @@ describe("checkVariableDocs", () => {
     expect(result.status).toBe("passed");
   });
 
-  it("should fail when no variables are documented but content has them", () => {
+  it("should warn when no variables are documented but content has them", () => {
     const content = "<task>Process $input</task>";
     const result = checkVariableDocs(content, makeContext());
-    expect(result.status).toBe("failed");
+    expect(result.status).toBe("warning");
     expect(result.message).toContain("$input");
   });
 });
 
 describe("runVerification", () => {
   it("should return passed when all checks pass", () => {
-    const content = "<task>Classify $message</task>";
+    const content = "<task>Classify $message</task><output_format>JSON</output_format>";
     const context = makeContext({
       documentedVariables: {
         message: { description: "The input message" },
@@ -216,12 +216,13 @@ describe("runVerification", () => {
     const result = runVerification(content, context);
     expect(result.status).toBe("passed");
     expect(result.score).toBe(100);
-    expect(result.checks).toHaveLength(5);
+    expect(result.checks).toHaveLength(14);
     expect(result.anti_pattern_scan.length).toBeGreaterThan(0);
   });
 
   it("should return failed when any check fails", () => {
-    const content = "<task>Process $undocumented</task>";
+    // Missing required <task> tag triggers a hard failure
+    const content = "<input>Process something</input>";
     const result = runVerification(content, makeContext());
     expect(result.status).toBe("failed");
     expect(result.score).toBeLessThan(100);

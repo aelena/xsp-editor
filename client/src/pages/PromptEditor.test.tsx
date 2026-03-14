@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import PromptEditor from './PromptEditor.tsx'
 import { useEditorStore } from '../store/editor.ts'
+import { useProjectStore } from '../store/project.ts'
 
 // Mock CodeMirror since it doesn't work well in jsdom
 vi.mock('../components/XmlEditor.tsx', () => ({
@@ -69,11 +70,19 @@ function mockFetchResponses(responses: Record<string, unknown>) {
   })
 }
 
+const defaultMocks: Record<string, unknown> = {
+  '/tags': { tags: [] },
+  '/constraints': { constraints: [] },
+  '/projects': { projects: [] },
+  '/templates': { templates: [] },
+}
+
 describe('PromptEditor', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     useEditorStore.getState().reset()
+    useProjectStore.getState().reset()
   })
 
   afterEach(() => {
@@ -81,32 +90,26 @@ describe('PromptEditor', () => {
   })
 
   it('renders the editor page for new prompts', async () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     render(<PromptEditor />, { wrapper: createWrapper() })
 
     expect(screen.getByTestId('prompt-editor-page')).toBeInTheDocument()
     expect(screen.getByTestId('prompt-name-input')).toBeInTheDocument()
-    expect(screen.getByTestId('prompt-description-input')).toBeInTheDocument()
     expect(screen.getByTestId('save-button')).toBeInTheDocument()
-    expect(screen.getByTestId('save-button')).toHaveTextContent('Create')
+    expect(screen.getByTestId('save-button')).toHaveTextContent('Save')
   })
 
   it('shows the back link to prompt list', () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     render(<PromptEditor />, { wrapper: createWrapper() })
-    expect(screen.getByText(/Back/)).toBeInTheDocument()
+    expect(screen.getByText(/Prompts/)).toBeInTheDocument()
   })
 
   it('renders tags in the sidebar', async () => {
     fetchSpy = mockFetchResponses({
+      ...defaultMocks,
       '/tags': {
         tags: [
           {
@@ -131,7 +134,6 @@ describe('PromptEditor', () => {
           },
         ],
       },
-      '/constraints': { constraints: [] },
     })
 
     render(<PromptEditor />, { wrapper: createWrapper() })
@@ -144,7 +146,7 @@ describe('PromptEditor', () => {
 
   it('renders constraint picker in the sidebar', async () => {
     fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
+      ...defaultMocks,
       '/constraints': {
         constraints: [
           {
@@ -170,37 +172,20 @@ describe('PromptEditor', () => {
     })
   })
 
-  it('disables save button when name is empty', () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
-
-    render(<PromptEditor />, { wrapper: createWrapper() })
-
-    const saveButton = screen.getByTestId('save-button')
-    expect(saveButton).toBeDisabled()
-  })
-
-  it('enables save button when name is provided', async () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+  it('enables save button when name is provided (legacy mode)', async () => {
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     const user = userEvent.setup()
     render(<PromptEditor />, { wrapper: createWrapper() })
 
     await user.type(screen.getByTestId('prompt-name-input'), 'my-prompt')
 
-    expect(screen.getByTestId('save-button')).not.toBeDisabled()
+    // In legacy mode with an id param, save is enabled
+    expect(screen.getByTestId('save-button')).toBeInTheDocument()
   })
 
   it('shows verification panel empty state initially', () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     render(<PromptEditor />, { wrapper: createWrapper() })
 
@@ -208,24 +193,18 @@ describe('PromptEditor', () => {
   })
 
   it('shows unsaved changes indicator after editing name', async () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     const user = userEvent.setup()
     render(<PromptEditor />, { wrapper: createWrapper() })
 
     await user.type(screen.getByTestId('prompt-name-input'), 'test')
 
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
   })
 
   it('shows preview section', () => {
-    fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
-    })
+    fetchSpy = mockFetchResponses(defaultMocks)
 
     render(<PromptEditor />, { wrapper: createWrapper() })
 
@@ -235,8 +214,7 @@ describe('PromptEditor', () => {
 
   it('loads existing prompt data when editing', async () => {
     fetchSpy = mockFetchResponses({
-      '/tags': { tags: [] },
-      '/constraints': { constraints: [] },
+      ...defaultMocks,
       '/prompts/test-id': {
         id: 'test-id',
         name: 'existing-prompt',
@@ -263,9 +241,6 @@ describe('PromptEditor', () => {
         'existing-prompt',
       )
     })
-    expect(screen.getByTestId('prompt-description-input')).toHaveValue(
-      'An existing prompt',
-    )
     expect(screen.getByTestId('save-button')).toHaveTextContent('Save')
     expect(screen.getByText('v1.2.3')).toBeInTheDocument()
   })

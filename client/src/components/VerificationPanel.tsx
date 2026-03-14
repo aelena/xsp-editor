@@ -19,22 +19,22 @@ function statusIcon(status: 'passed' | 'warning' | 'failed') {
 function statusColor(status: 'passed' | 'warning' | 'failed') {
   switch (status) {
     case 'passed':
-      return 'text-green-600'
+      return 'text-green-600 dark:text-green-400'
     case 'warning':
-      return 'text-yellow-600'
+      return 'text-yellow-600 dark:text-yellow-400'
     case 'failed':
-      return 'text-red-600'
+      return 'text-red-600 dark:text-red-400'
   }
 }
 
 function overallStatusColor(status: 'passed' | 'warnings' | 'failed') {
   switch (status) {
     case 'passed':
-      return 'bg-green-100 text-green-800 border-green-300'
+      return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-300 dark:border-green-600'
     case 'warnings':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600'
     case 'failed':
-      return 'bg-red-100 text-red-800 border-red-300'
+      return 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-600'
   }
 }
 
@@ -44,7 +44,7 @@ export default function VerificationPanel({
 }: VerificationPanelProps) {
   if (isVerifying) {
     return (
-      <div data-testid="verification-loading" className="p-4 text-gray-500">
+      <div data-testid="verification-loading" className="p-4 text-gray-500 dark:text-gray-400">
         Verifying...
       </div>
     )
@@ -52,7 +52,7 @@ export default function VerificationPanel({
 
   if (!result) {
     return (
-      <div data-testid="verification-empty" className="p-4 text-gray-400">
+      <div data-testid="verification-empty" className="p-4 text-gray-400 dark:text-gray-500">
         Edit your prompt to see verification results.
       </div>
     )
@@ -70,13 +70,13 @@ export default function VerificationPanel({
               ? 'Warnings'
               : 'Failed'}
         </div>
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           Score: <span className="font-semibold">{result.score}</span>/100
         </div>
       </div>
 
       <div className="space-y-2">
-        <h4 className="text-sm font-medium text-gray-700">Checks</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Checks</h4>
         <ul className="space-y-1">
           {result.checks.map((check) => (
             <li key={check.rule} className="flex items-start gap-2 text-sm">
@@ -84,8 +84,8 @@ export default function VerificationPanel({
                 {statusIcon(check.status)}
               </span>
               <div>
-                <span className="font-medium">{check.rule}</span>
-                <span className="text-gray-600"> — {check.message}</span>
+                <span className="font-medium dark:text-gray-200">{check.rule}</span>
+                <span className="text-gray-600 dark:text-gray-400"> — {check.message}</span>
               </div>
             </li>
           ))}
@@ -94,17 +94,17 @@ export default function VerificationPanel({
 
       {result.anti_pattern_scan.some((ap) => ap.detected) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Anti-Patterns Detected
           </h4>
           <ul className="space-y-1">
             {result.anti_pattern_scan
               .filter((ap) => ap.detected)
               .map((ap) => (
-                <li key={ap.pattern} className="text-sm text-yellow-700">
+                <li key={ap.pattern} className="text-sm text-yellow-700 dark:text-yellow-300">
                   ⚠ {ap.pattern}
                   {ap.details && (
-                    <span className="text-gray-500"> — {ap.details}</span>
+                    <span className="text-gray-500 dark:text-gray-400"> — {ap.details}</span>
                   )}
                 </li>
               ))}

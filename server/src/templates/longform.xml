@@ -1,0 +1,37 @@
+<topic>
+  $topic
+</topic>
+
+<audience>
+  $target_audience
+</audience>
+
+<intent>
+  $writing_intent
+</intent>
+
+<stance>
+  $authorial_stance
+</stance>
+
+<voice_and_tone>
+  Tone: $tone
+  Register: $register
+  Perspective: $perspective
+</voice_and_tone>
+
+<source_policy>
+  $source_handling_rules
+</source_policy>
+
+<constraints>
+  <constraint id="$constraint_id" severity="$severity">
+    $constraint_text
+  </constraint>
+</constraints>
+
+<output_contract>
+  Structure: $structure_requirements
+  Length: $length_requirements
+  Format: $format_requirements
+</output_contract>

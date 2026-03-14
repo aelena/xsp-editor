@@ -1,6 +1,7 @@
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
+import type { TemplateRecord } from "../schemas/templates.js";
 
 export interface ListConstraintsOptions {
   severity?: "critical" | "high" | "medium" | "low";
@@ -60,4 +61,11 @@ export interface StorageAdapter {
     options?: ListConstraintsOptions,
   ): Promise<ConstraintRecord[]>;
   deleteConstraint(id: string): Promise<void>;
+
+  // Template CRUD (Table Storage)
+  createTemplate(template: TemplateRecord): Promise<void>;
+  getTemplate(name: string): Promise<TemplateRecord | null>;
+  updateTemplate(name: string, updates: Partial<TemplateRecord>): Promise<void>;
+  listTemplates(): Promise<TemplateRecord[]>;
+  deleteTemplate(name: string): Promise<void>;
 }

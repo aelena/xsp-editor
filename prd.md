@@ -808,14 +808,14 @@ The Fastify server serves the React build from `/public` as static files and the
 
 **Goal:** Authors can create, edit, version, and verify XSP prompts.
 
-- [ ] API: `/prompts` CRUD with Blob Storage versioning
-- [ ] API: `/tags` CRUD with Table Storage
-- [ ] API: `/constraints` CRUD with Table Storage
-- [ ] API: `/verify` with core rules (approved_tags, required_tags, empty_sections, nesting_depth, variable_docs)
-- [ ] Frontend: Prompt list page
-- [ ] Frontend: Prompt editor with CodeMirror, tag autocomplete, live verification
-- [ ] Frontend: Tag registry page
-- [ ] Frontend: Constraint library page
+- [x] API: `/prompts` CRUD with Blob Storage versioning
+- [x] API: `/tags` CRUD with Table Storage
+- [x] API: `/constraints` CRUD with Table Storage
+- [x] API: `/verify` with core rules (approved_tags, required_tags, empty_sections, nesting_depth, variable_docs)
+- [x] Frontend: Prompt list page
+- [x] Frontend: Prompt editor with CodeMirror, tag autocomplete, live verification
+- [x] Frontend: Tag registry page
+- [x] Frontend: Constraint library page
 - [ ] Built-in templates (baseline, longform, extraction, summarization, customer-support)
 - [ ] Default tag registry and constraint library seeded on first run
 

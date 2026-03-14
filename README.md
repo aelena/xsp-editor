@@ -2,7 +2,7 @@
 
 A web-based editor for authoring, validating, and testing XML-Structured Prompts (XSP).
 
-XSP is a prompting methodology that wraps each part of an LLM prompt in labeled XML tags, creating unambiguous structure that improves reliability, maintainability, and auditability. This editor is a companion tool to the [XML-Structured Prompting book](https://github.com/yourusername/xml-struct-prompting-book).
+XSP is a prompting methodology that wraps each part of an LLM prompt in labeled XML tags, creating unambiguous structure that improves reliability, maintainability, and auditability. This editor is a companion tool to my [XML-Structured Prompting book](https://aelena74.gumroad.com/l/xsp).
 
 ## What it does
 

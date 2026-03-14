@@ -116,19 +116,16 @@ export function registerProjectRoutes(app: FastifyInstance): void {
 
     try {
       if (platform === "win32") {
-        // PowerShell FolderBrowserDialog
+        // Shell.Application.BrowseForFolder (avoids STA/WinForms threading issues when spawned from Node)
         const script = `
-Add-Type -AssemblyName System.Windows.Forms
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Select project folder'
-$dialog.ShowNewFolderButton = $true
-$result = $dialog.ShowDialog()
-if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-  Write-Output $dialog.SelectedPath
+$app = New-Object -ComObject Shell.Application
+$folder = $app.BrowseForFolder(0, "Select project folder", 0, 0)
+if ($folder -and $folder.Self -and $folder.Self.Path) {
+  Write-Output $folder.Self.Path
 }`;
         const { stdout } = await execFileAsync("powershell", [
           "-NoProfile",
-          "-NonInteractive",
+          "-ExecutionPolicy", "Bypass",
           "-Command",
           script,
         ], { timeout: 60000 });

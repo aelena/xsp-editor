@@ -59,6 +59,27 @@ export function usePrompt(id: string | undefined) {
   })
 }
 
+export interface PromptVersion {
+  prompt_id: string
+  version: string
+  content: string
+  author: string
+  changelog_summary: string
+  version_bump_type: string
+  created_at: string
+}
+
+export function usePromptVersions(id: string | undefined) {
+  return useQuery({
+    queryKey: ['prompt-versions', id],
+    queryFn: () =>
+      apiFetch<{ prompt_id: string; versions: PromptVersion[] }>(
+        `/prompts/${id}/versions`,
+      ),
+    enabled: !!id,
+  })
+}
+
 export interface CreatePromptRequest {
   name: string
   description: string

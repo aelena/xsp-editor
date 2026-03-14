@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import PromptList from './pages/PromptList.tsx'
 import PromptEditor from './pages/PromptEditor.tsx'
+import PromptVersions from './pages/PromptVersions.tsx'
 import TagRegistry from './pages/TagRegistry.tsx'
 import ConstraintLibrary from './pages/ConstraintLibrary.tsx'
 import Templates from './pages/Templates.tsx'
@@ -27,6 +28,7 @@ function App() {
           <Route path="/prompts" element={<PromptList />} />
           <Route path="/prompts/new" element={<PromptEditor />} />
           <Route path="/prompts/:id/edit" element={<PromptEditor />} />
+          <Route path="/prompts/:id/versions" element={<PromptVersions />} />
           <Route path="/tags" element={<TagRegistry />} />
           <Route path="/constraints" element={<ConstraintLibrary />} />
           <Route path="/templates" element={<Templates />} />

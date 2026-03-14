@@ -1,5 +1,14 @@
 # XSP Editor
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![BYOK](https://img.shields.io/badge/LLM-Bring_Your_Own_Key-green)](#llm-integration)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com)
+
 A web-based editor for authoring, validating, and testing XML-Structured Prompts (XSP).
 
 XSP is a prompting methodology that wraps each part of an LLM prompt in labeled XML tags, creating unambiguous structure that improves reliability, maintainability, and auditability. This editor is a companion tool to my [XML-Structured Prompting book](https://aelena74.gumroad.com/l/xsp).

@@ -45,10 +45,24 @@ export function registerLLMRoutes(app: FastifyInstance): void {
     }
 
     const existingConfig = getLLMConfig();
+
+    // If the base URL or provider changed, require the API key to be re-entered
+    // to prevent exfiltration via SSRF (attacker swaps URL to steal stored key)
+    const urlChanged = existingConfig &&
+      (parseResult.data.custom_base_url !== (existingConfig.custom_base_url || null) ||
+       parseResult.data.provider !== existingConfig.provider);
+    const reusingKey = parseResult.data.api_key === "unchanged";
+
+    if (urlChanged && reusingKey) {
+      return reply.status(400).send({
+        error: "API key must be re-entered when changing provider or base URL",
+      });
+    }
+
     const config: LLMConfig = {
       provider: parseResult.data.provider,
       model: parseResult.data.model,
-      api_key: parseResult.data.api_key === "unchanged" && existingConfig
+      api_key: reusingKey && existingConfig
         ? existingConfig.api_key
         : parseResult.data.api_key,
       default_max_tokens: parseResult.data.default_max_tokens,

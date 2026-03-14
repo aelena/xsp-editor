@@ -46,7 +46,7 @@ export async function gitStatus(dirPath: string): Promise<GitStatusEntry[]> {
 }
 
 export async function gitAdd(dirPath: string, files: string[]): Promise<void> {
-  await git(dirPath, ["add", ...files]);
+  await git(dirPath, ["add", "--", ...files]);
 }
 
 export async function gitCommit(

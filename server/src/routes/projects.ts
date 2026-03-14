@@ -11,7 +11,15 @@ import { isGitRepo, gitInit, gitStatus, gitAdd, gitCommit, gitLog, gitDiff } fro
 const execFileAsync = promisify(execFile);
 
 // In-memory project store (simple, no adapter needed)
-const projects = new Map<string, ProjectRecord>();
+export const projects = new Map<string, ProjectRecord>();
+
+/** Check whether a given path is a registered project root. */
+export function isRegisteredProjectPath(projectPath: string): boolean {
+  for (const p of projects.values()) {
+    if (p.path === projectPath) return true;
+  }
+  return false;
+}
 
 export function registerProjectRoutes(app: FastifyInstance): void {
   // List all projects
@@ -174,10 +182,25 @@ if ($folder -and $folder.Self -and $folder.Self.Path) {
   });
 
   // Browse: list directory contents (fallback for browsing)
+  // Browse directory contents — restricted to registered project paths only
   app.get("/api/v1/browse-folder", async (request, reply) => {
     const { path: dirPath } = request.query as { path?: string };
     if (!dirPath) {
       return reply.status(400).send({ error: "path query param is required" });
+    }
+
+    if (!isRegisteredProjectPath(dirPath)) {
+      // Also allow subdirectories of registered projects
+      let allowed = false;
+      for (const p of projects.values()) {
+        if (dirPath.startsWith(p.path)) {
+          allowed = true;
+          break;
+        }
+      }
+      if (!allowed) {
+        return reply.status(403).send({ error: "Path is not within a registered project" });
+      }
     }
 
     try {

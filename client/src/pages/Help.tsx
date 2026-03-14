@@ -189,7 +189,8 @@ function escapeHtml(str: string): string {
 }
 
 function inlineFormat(text: string): string {
-  return text
+  const escaped = escapeHtml(text)
+  return escaped
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')

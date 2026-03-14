@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { readdir, readFile, writeFile, mkdir, unlink, stat, rename } from "node:fs/promises";
 import { join, resolve, relative, extname, dirname } from "node:path";
 import { existsSync } from "node:fs";
+import { isRegisteredProjectPath } from "./projects.js";
 
 interface FileEntry {
   name: string;
@@ -65,6 +66,9 @@ export function registerFileRoutes(app: FastifyInstance): void {
     if (!projectPath) {
       return reply.status(400).send({ error: "projectPath query param required" });
     }
+    if (!isRegisteredProjectPath(projectPath)) {
+      return reply.status(403).send({ error: "Project path is not registered" });
+    }
     if (!existsSync(projectPath)) {
       return reply.status(400).send({ error: "Directory does not exist" });
     }
@@ -83,6 +87,9 @@ export function registerFileRoutes(app: FastifyInstance): void {
       return reply.status(400).send({
         error: "projectPath and filePath query params required",
       });
+    }
+    if (!isRegisteredProjectPath(projectPath)) {
+      return reply.status(403).send({ error: "Project path is not registered" });
     }
 
     try {
@@ -111,6 +118,9 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath and filePath query params required",
       });
     }
+    if (!isRegisteredProjectPath(projectPath)) {
+      return reply.status(403).send({ error: "Project path is not registered" });
+    }
 
     const { content } = request.body as { content: string };
     if (content === undefined) {
@@ -128,7 +138,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
       return reply.send({ path: filePath, message: "File saved" });
     } catch (err) {
       return reply.status(500).send({
-        error: `Failed to write file: ${(err as Error).message}`,
+        error: "Failed to write file",
       });
     }
   });
@@ -143,6 +153,9 @@ export function registerFileRoutes(app: FastifyInstance): void {
       return reply.status(400).send({
         error: "projectPath and filePath query params required",
       });
+    }
+    if (!isRegisteredProjectPath(projectPath)) {
+      return reply.status(403).send({ error: "Project path is not registered" });
     }
 
     try {
@@ -166,6 +179,9 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath query param and oldPath/newPath body fields required",
       });
     }
+    if (!isRegisteredProjectPath(projectPath)) {
+      return reply.status(403).send({ error: "Project path is not registered" });
+    }
 
     try {
       const fullOld = resolveProjectPath(projectPath, oldPath);
@@ -178,7 +194,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
       return reply.send({ oldPath, newPath, message: "File renamed" });
     } catch (err) {
       return reply.status(500).send({
-        error: `Failed to rename: ${(err as Error).message}`,
+        error: "Failed to rename file",
       });
     }
   });

@@ -1,3 +1,28 @@
+/** Block SSRF: reject URLs targeting private/internal networks. */
+function validateBaseUrl(urlStr: string): void {
+  const parsed = new URL(urlStr);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Only http/https URLs are allowed");
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  // Block cloud metadata endpoints
+  if (hostname === "169.254.169.254" || hostname === "metadata.google.internal") {
+    throw new Error("Blocked: cloud metadata endpoint");
+  }
+  // Block loopback
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]") {
+    throw new Error("Blocked: loopback address");
+  }
+  // Block private IP ranges
+  const parts = hostname.split(".").map(Number);
+  if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
+    if (parts[0] === 10) throw new Error("Blocked: private IP range (10.x)");
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) throw new Error("Blocked: private IP range (172.16-31.x)");
+    if (parts[0] === 192 && parts[1] === 168) throw new Error("Blocked: private IP range (192.168.x)");
+    if (parts[0] === 169 && parts[1] === 254) throw new Error("Blocked: link-local address");
+  }
+}
+
 export interface LLMConfig {
   provider: "anthropic" | "openai" | "azure-openai" | "custom";
   model: string;
@@ -143,8 +168,10 @@ async function callOpenAICompatible(
 ): Promise<{ response: string; input_tokens: number; output_tokens: number }> {
   let baseUrl: string;
   if (config.provider === "custom" && config.custom_base_url) {
+    validateBaseUrl(config.custom_base_url);
     baseUrl = config.custom_base_url.replace(/\/$/, "");
   } else if (config.provider === "azure-openai" && config.custom_base_url) {
+    validateBaseUrl(config.custom_base_url);
     baseUrl = config.custom_base_url.replace(/\/$/, "");
   } else {
     baseUrl = "https://api.openai.com/v1";

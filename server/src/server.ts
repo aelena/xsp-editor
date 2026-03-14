@@ -11,7 +11,8 @@ async function main() {
   await seedDefaults(adapter);
 
   try {
-    await app.listen({ port: config.port, host: "0.0.0.0" });
+    const host = process.env.HOST || "127.0.0.1";
+    await app.listen({ port: config.port, host });
     console.log(`Server listening on port ${config.port}`);
   } catch (err) {
     app.log.error(err);

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { StorageAdapter } from "../storage/adapter.js";
 import { createTemplateSchema, updateTemplateSchema } from "../schemas/templates.js";
+import { nameParamSchema } from "../schemas/params.js";
 
 export function registerTemplateRoutes(
   app: FastifyInstance,
@@ -14,7 +15,11 @@ export function registerTemplateRoutes(
 
   // Get single template
   app.get("/api/v1/templates/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid template name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const template = await storage.getTemplate(name);
     if (!template) {
       return reply.status(404).send({ error: `Template '${name}' not found` });
@@ -58,7 +63,11 @@ export function registerTemplateRoutes(
 
   // Update template
   app.put("/api/v1/templates/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid template name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const parseResult = updateTemplateSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.status(400).send({
@@ -84,7 +93,11 @@ export function registerTemplateRoutes(
 
   // Delete template
   app.delete("/api/v1/templates/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid template name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const existing = await storage.getTemplate(name);
     if (!existing) {
       return reply.status(404).send({ error: `Template '${name}' not found` });

@@ -1,20 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import type { StorageAdapter } from "../storage/adapter.js";
-import { createTagSchema, updateTagSchema } from "../schemas/tags.js";
+import { createTagSchema, updateTagSchema, listTagsQuerySchema } from "../schemas/tags.js";
+import { nameParamSchema } from "../schemas/params.js";
 
 export function registerTagRoutes(
   app: FastifyInstance,
   storage: StorageAdapter,
 ): void {
   // List all tags
-  app.get("/api/v1/tags", async (_request, reply) => {
-    const tags = await storage.listTags();
-    return reply.send({ tags });
+  app.get("/api/v1/tags", async (request, reply) => {
+    const parseResult = listTagsQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: "Invalid query parameters",
+        details: parseResult.error.issues,
+      });
+    }
+
+    const result = await storage.listTags(parseResult.data);
+    return reply.send({ tags: result.items, total: result.total, page: result.page, limit: result.limit });
   });
 
   // Get a tag by name
   app.get("/api/v1/tags/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid tag name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const tag = await storage.getTag(name);
     if (!tag) {
       return reply.status(404).send({ error: "Tag not found" });
@@ -58,7 +71,11 @@ export function registerTagRoutes(
 
   // Update a tag
   app.put("/api/v1/tags/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid tag name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const existing = await storage.getTag(name);
     if (!existing) {
       return reply.status(404).send({ error: "Tag not found" });
@@ -90,7 +107,11 @@ export function registerTagRoutes(
 
   // Delete (remove) a tag
   app.delete("/api/v1/tags/:name", async (request, reply) => {
-    const { name } = request.params as { name: string };
+    const paramResult = nameParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid tag name", details: paramResult.error.issues });
+    }
+    const { name } = paramResult.data;
     const existing = await storage.getTag(name);
     if (!existing) {
       return reply.status(404).send({ error: "Tag not found" });

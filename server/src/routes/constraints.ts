@@ -5,6 +5,7 @@ import {
   updateConstraintSchema,
   listConstraintsQuerySchema,
 } from "../schemas/constraints.js";
+import { constraintIdParamSchema } from "../schemas/params.js";
 
 export function registerConstraintRoutes(
   app: FastifyInstance,
@@ -21,13 +22,17 @@ export function registerConstraintRoutes(
     }
 
     const filters = parseResult.data;
-    const constraints = await storage.listConstraints(filters);
-    return reply.send({ constraints });
+    const result = await storage.listConstraints(filters);
+    return reply.send({ constraints: result.items, total: result.total, page: result.page, limit: result.limit });
   });
 
   // Get a constraint by ID
   app.get("/api/v1/constraints/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = constraintIdParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid constraint ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const constraint = await storage.getConstraint(id);
     if (!constraint) {
       return reply.status(404).send({ error: "Constraint not found" });
@@ -73,7 +78,11 @@ export function registerConstraintRoutes(
 
   // Update a constraint
   app.put("/api/v1/constraints/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = constraintIdParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid constraint ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getConstraint(id);
     if (!existing) {
       return reply.status(404).send({ error: "Constraint not found" });
@@ -107,7 +116,11 @@ export function registerConstraintRoutes(
 
   // Delete (retire) a constraint
   app.delete("/api/v1/constraints/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = constraintIdParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid constraint ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getConstraint(id);
     if (!existing) {
       return reply.status(404).send({ error: "Constraint not found" });

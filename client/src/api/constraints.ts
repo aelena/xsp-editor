@@ -1,21 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client.ts'
+import { constraintSchema, listConstraintsResponseSchema } from './schemas.ts'
+import type { z } from 'zod'
 
-export interface Constraint {
-  id: string
-  description: string
-  severity: 'critical' | 'high' | 'medium' | 'low'
-  category: 'content' | 'safety' | 'style' | 'structural' | 'evidence' | 'output'
-  owner: string
-  status: 'active' | 'deprecated' | 'retired'
-  xml_block: string
-  usage_count: number
-  created_at: string
-  updated_at: string
-}
+export type Constraint = z.infer<typeof constraintSchema>
 
 export interface ListConstraintsResponse {
   constraints: Constraint[]
+  total: number
+  page: number
+  limit: number
 }
 
 export interface CreateConstraintRequest {
@@ -39,7 +33,7 @@ export interface UpdateConstraintRequest {
 export function useConstraints() {
   return useQuery({
     queryKey: ['constraints'],
-    queryFn: () => apiFetch<ListConstraintsResponse>('/constraints'),
+    queryFn: () => apiFetch<ListConstraintsResponse>('/constraints', undefined, listConstraintsResponseSchema),
   })
 }
 
@@ -50,7 +44,7 @@ export function useCreateConstraint() {
       apiFetch<Constraint>('/constraints', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
+      }, constraintSchema),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['constraints'] })
     },
@@ -64,7 +58,7 @@ export function useUpdateConstraint() {
       apiFetch<Constraint>(`/constraints/${encodeURIComponent(id)}`, {
         method: 'PUT',
         body: JSON.stringify(data),
-      }),
+      }, constraintSchema),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['constraints'] })
     },

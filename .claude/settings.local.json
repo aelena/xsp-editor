@@ -18,7 +18,9 @@
       "Bash(done)",
       "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 5998,5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Output 'done'\")",
       "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Output 'done'\")",
-      "Bash(powershell -File - <<'PS1'\nGet-NetTCPConnection -LocalPort 5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\nWrite-Output 'done'\nPS1)"
+      "Bash(powershell -File - <<'PS1'\nGet-NetTCPConnection -LocalPort 5999 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\nWrite-Output 'done'\nPS1)",
+      "Bash(git remote *)",
+      "Bash(git reset *)"
     ]
   }
 }

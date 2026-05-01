@@ -8,6 +8,7 @@ import {
   type PromptRecord,
   type PromptVersionRecord,
 } from "../schemas/prompts.js";
+import { uuidParamSchema, promptVersionParamSchema } from "../schemas/params.js";
 import {
   incrementVersion,
   extractTagsUsed,
@@ -97,7 +98,11 @@ export function registerPromptRoutes(
 
   // Get a prompt by ID
   app.get("/api/v1/prompts/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = uuidParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid prompt ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const prompt = await storage.getPrompt(id);
     if (!prompt) {
       return reply.status(404).send({ error: "Prompt not found" });
@@ -107,7 +112,11 @@ export function registerPromptRoutes(
 
   // Update a prompt (creates a new version)
   app.put("/api/v1/prompts/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = uuidParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid prompt ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getPrompt(id);
     if (!existing) {
       return reply.status(404).send({ error: "Prompt not found" });
@@ -175,7 +184,11 @@ export function registerPromptRoutes(
 
   // Soft-delete a prompt
   app.delete("/api/v1/prompts/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = uuidParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid prompt ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getPrompt(id);
     if (!existing) {
       return reply.status(404).send({ error: "Prompt not found" });
@@ -187,7 +200,11 @@ export function registerPromptRoutes(
 
   // List all versions of a prompt
   app.get("/api/v1/prompts/:id/versions", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = uuidParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid prompt ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getPrompt(id);
     if (!existing) {
       return reply.status(404).send({ error: "Prompt not found" });
@@ -201,7 +218,11 @@ export function registerPromptRoutes(
   app.get(
     "/api/v1/prompts/:id/versions/:ver",
     async (request, reply) => {
-      const { id, ver } = request.params as { id: string; ver: string };
+      const paramResult = promptVersionParamSchema.safeParse(request.params);
+      if (!paramResult.success) {
+        return reply.status(400).send({ error: "Invalid parameters", details: paramResult.error.issues });
+      }
+      const { id, ver } = paramResult.data;
       const existing = await storage.getPrompt(id);
       if (!existing) {
         return reply.status(404).send({ error: "Prompt not found" });
@@ -217,7 +238,11 @@ export function registerPromptRoutes(
 
   // Rollback to a specified version
   app.post("/api/v1/prompts/:id/rollback", async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const paramResult = uuidParamSchema.safeParse(request.params);
+    if (!paramResult.success) {
+      return reply.status(400).send({ error: "Invalid prompt ID", details: paramResult.error.issues });
+    }
+    const { id } = paramResult.data;
     const existing = await storage.getPrompt(id);
     if (!existing) {
       return reply.status(404).send({ error: "Prompt not found" });

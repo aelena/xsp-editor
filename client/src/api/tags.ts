@@ -1,19 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client.ts'
+import { tagSchema, listTagsResponseSchema } from './schemas.ts'
+import type { z } from 'zod'
 
-export interface Tag {
-  name: string
-  purpose: string
-  use_when: string
-  example: string
-  enforcement: 'required' | 'recommended' | 'optional' | 'deprecated'
-  usage_count: number
-  created_at: string
-  updated_at: string
-}
+export type Tag = z.infer<typeof tagSchema>
 
 export interface ListTagsResponse {
   tags: Tag[]
+  total: number
+  page: number
+  limit: number
 }
 
 export interface CreateTagRequest {
@@ -34,7 +30,7 @@ export interface UpdateTagRequest {
 export function useTags() {
   return useQuery({
     queryKey: ['tags'],
-    queryFn: () => apiFetch<ListTagsResponse>('/tags'),
+    queryFn: () => apiFetch<ListTagsResponse>('/tags', undefined, listTagsResponseSchema),
   })
 }
 
@@ -45,7 +41,7 @@ export function useCreateTag() {
       apiFetch<Tag>('/tags', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
+      }, tagSchema),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tags'] })
     },
@@ -59,7 +55,7 @@ export function useUpdateTag() {
       apiFetch<Tag>(`/tags/${encodeURIComponent(name)}`, {
         method: 'PUT',
         body: JSON.stringify(data),
-      }),
+      }, tagSchema),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tags'] })
     },

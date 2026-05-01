@@ -35,11 +35,17 @@ function createWrapper() {
   }
 }
 
-function mockFetch(response: ListTagsResponse) {
+function mockFetch(response: { tags: ListTagsResponse['tags'] }) {
+  const fullResponse: ListTagsResponse = {
+    ...response,
+    total: response.tags.length,
+    page: 1,
+    limit: 50,
+  }
   return vi.spyOn(globalThis, 'fetch').mockResolvedValue({
     ok: true,
     status: 200,
-    json: () => Promise.resolve(response),
+    json: () => Promise.resolve(fullResponse),
   } as Response)
 }
 

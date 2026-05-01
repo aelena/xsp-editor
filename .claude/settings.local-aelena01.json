@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 10 npx tsx:*)",
+      "Bash(netstat:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx vite:*)",
+      "Bash(cd \"C:\\\\Users\\\\anton\\\\OneDrive\\\\My Digital Projects\\\\xsp-editor\\\\client\" && npm install zod 2>&1 | tail -5)"
+    ]
+  }
+}

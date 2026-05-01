@@ -242,7 +242,7 @@ describe("GET /api/v1/prompts/:id", () => {
     const { app } = createTestApp();
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/prompts/non-existent-id",
+      url: "/api/v1/prompts/00000000-0000-0000-0000-000000000000",
     });
 
     expect(res.statusCode).toBe(404);
@@ -325,7 +325,7 @@ describe("PUT /api/v1/prompts/:id", () => {
     const { app } = createTestApp();
     const res = await app.inject({
       method: "PUT",
-      url: "/api/v1/prompts/non-existent-id",
+      url: "/api/v1/prompts/00000000-0000-0000-0000-000000000000",
       payload: { description: "Updated" },
     });
 
@@ -384,7 +384,7 @@ describe("DELETE /api/v1/prompts/:id", () => {
     const { app } = createTestApp();
     const res = await app.inject({
       method: "DELETE",
-      url: "/api/v1/prompts/non-existent-id",
+      url: "/api/v1/prompts/00000000-0000-0000-0000-000000000000",
     });
 
     expect(res.statusCode).toBe(404);
@@ -430,7 +430,7 @@ describe("GET /api/v1/prompts/:id/versions", () => {
     const { app } = createTestApp();
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/prompts/non-existent/versions",
+      url: "/api/v1/prompts/00000000-0000-0000-0000-000000000000/versions",
     });
 
     expect(res.statusCode).toBe(404);

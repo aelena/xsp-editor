@@ -1,3 +1,5 @@
+import type { ZodType } from 'zod'
+
 const API_BASE = '/api/v1'
 
 export class ApiError extends Error {
@@ -10,16 +12,28 @@ export class ApiError extends Error {
   }
 }
 
+function getApiKey(): string | undefined {
+  return import.meta.env.VITE_API_AUTH_TOKEN || undefined
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit,
+  schema?: ZodType<T>,
 ): Promise<T> {
+  const apiKey = getApiKey()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  }
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   })
 
   if (!response.ok) {
@@ -34,5 +48,11 @@ export async function apiFetch<T>(
     return undefined as T
   }
 
-  return response.json()
+  const data = await response.json()
+
+  if (schema) {
+    return schema.parse(data)
+  }
+
+  return data as T
 }

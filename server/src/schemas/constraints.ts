@@ -39,6 +39,8 @@ export const updateConstraintSchema = z.object({
 });
 
 export const listConstraintsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   severity: z.enum(["critical", "high", "medium", "low"]).optional(),
   category: z
     .enum(["content", "safety", "style", "structural", "evidence", "output"])

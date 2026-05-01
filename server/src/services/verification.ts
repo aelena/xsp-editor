@@ -224,7 +224,7 @@ export function checkVariableDocs(content: string, context: VerificationContext)
 
   return {
     rule: "variable_docs",
-    status: "warning",
+    status: "failed",
     message: `Undocumented variables: ${undocumented.map((v) => `$${v}`).join(", ")}`,
   };
 }

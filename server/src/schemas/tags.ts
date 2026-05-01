@@ -27,6 +27,15 @@ export const updateTagSchema = z.object({
     .optional(),
 });
 
+export const listTagsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  search: z.string().optional(),
+  enforcement: z
+    .enum(["required", "recommended", "optional", "deprecated"])
+    .optional(),
+});
+
 export interface TagRecord {
   name: string;
   purpose: string;

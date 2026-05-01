@@ -179,7 +179,7 @@ describe("checkVariableDocs", () => {
     expect(result.status).toBe("passed");
   });
 
-  it("should warn when variables are undocumented", () => {
+  it("should fail when variables are undocumented", () => {
     const content = "<task>Process $customer_message for $order_id</task>";
     const context = makeContext({
       documentedVariables: {
@@ -187,7 +187,7 @@ describe("checkVariableDocs", () => {
       },
     });
     const result = checkVariableDocs(content, context);
-    expect(result.status).toBe("warning");
+    expect(result.status).toBe("failed");
     expect(result.message).toContain("$order_id");
   });
 
@@ -197,10 +197,10 @@ describe("checkVariableDocs", () => {
     expect(result.status).toBe("passed");
   });
 
-  it("should warn when no variables are documented but content has them", () => {
+  it("should fail when no variables are documented but content has them", () => {
     const content = "<task>Process $input</task>";
     const result = checkVariableDocs(content, makeContext());
-    expect(result.status).toBe("warning");
+    expect(result.status).toBe("failed");
     expect(result.message).toContain("$input");
   });
 });

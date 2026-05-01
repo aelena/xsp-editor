@@ -3,6 +3,8 @@ import type {
   ListPromptsOptions,
   ListPromptsResult,
   ListConstraintsOptions,
+  ListTagsOptions,
+  PaginatedResult,
 } from "./adapter.js";
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
@@ -116,10 +118,36 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.tags.set(name, { ...existing, ...updates });
   }
 
-  async listTags(): Promise<TagRecord[]> {
-    return Array.from(this.tags.values())
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((t) => ({ ...t }));
+  async listTags(options?: ListTagsOptions): Promise<PaginatedResult<TagRecord>> {
+    let results = Array.from(this.tags.values());
+
+    if (options?.search) {
+      const search = options.search.toLowerCase();
+      results = results.filter(
+        (t) =>
+          t.name.toLowerCase().includes(search) ||
+          t.purpose.toLowerCase().includes(search),
+      );
+    }
+
+    if (options?.enforcement) {
+      results = results.filter((t) => t.enforcement === options.enforcement);
+    }
+
+    results.sort((a, b) => a.name.localeCompare(b.name));
+
+    const total = results.length;
+    const page = options?.page ?? 1;
+    const limit = options?.limit ?? 50;
+    const start = (page - 1) * limit;
+    const paged = results.slice(start, start + limit);
+
+    return {
+      items: paged.map((t) => ({ ...t })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async deleteTag(name: string): Promise<void> {
@@ -147,7 +175,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   async listConstraints(
     options?: ListConstraintsOptions,
-  ): Promise<ConstraintRecord[]> {
+  ): Promise<PaginatedResult<ConstraintRecord>> {
     let results = Array.from(this.constraints.values());
 
     if (options?.severity) {
@@ -160,9 +188,20 @@ export class MemoryStorageAdapter implements StorageAdapter {
       results = results.filter((c) => c.status === options.status);
     }
 
-    return results
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((c) => ({ ...c }));
+    results.sort((a, b) => a.id.localeCompare(b.id));
+
+    const total = results.length;
+    const page = options?.page ?? 1;
+    const limit = options?.limit ?? 50;
+    const start = (page - 1) * limit;
+    const paged = results.slice(start, start + limit);
+
+    return {
+      items: paged.map((c) => ({ ...c })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async deleteConstraint(id: string): Promise<void> {

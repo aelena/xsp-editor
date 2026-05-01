@@ -4,6 +4,8 @@ import type { ConstraintRecord } from "../schemas/constraints.js";
 import type { TemplateRecord } from "../schemas/templates.js";
 
 export interface ListConstraintsOptions {
+  page: number;
+  limit: number;
   severity?: "critical" | "high" | "medium" | "low";
   category?:
     | "content"
@@ -13,6 +15,20 @@ export interface ListConstraintsOptions {
     | "evidence"
     | "output";
   status?: "active" | "deprecated" | "retired";
+}
+
+export interface ListTagsOptions {
+  page: number;
+  limit: number;
+  search?: string;
+  enforcement?: "required" | "recommended" | "optional" | "deprecated";
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ListPromptsOptions {
@@ -47,7 +63,7 @@ export interface StorageAdapter {
   createTag(tag: TagRecord): Promise<void>;
   getTag(name: string): Promise<TagRecord | null>;
   updateTag(name: string, updates: Partial<TagRecord>): Promise<void>;
-  listTags(): Promise<TagRecord[]>;
+  listTags(options?: ListTagsOptions): Promise<PaginatedResult<TagRecord>>;
   deleteTag(name: string): Promise<void>;
 
   // Constraint CRUD (Table Storage)
@@ -59,7 +75,7 @@ export interface StorageAdapter {
   ): Promise<void>;
   listConstraints(
     options?: ListConstraintsOptions,
-  ): Promise<ConstraintRecord[]>;
+  ): Promise<PaginatedResult<ConstraintRecord>>;
   deleteConstraint(id: string): Promise<void>;
 
   // Template CRUD (Table Storage)

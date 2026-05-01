@@ -1,13 +1,26 @@
 # XSP Editor
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
-[![BYOK](https://img.shields.io/badge/LLM-Bring_Your_Own_Key-green)](#llm-integration)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com)
+<!-- badges-start -->
+[![License](https://img.shields.io/github/license/aelena/xsp-editor?style=plastic&color=blue)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor/commits)
+[![Top Language](https://img.shields.io/github/languages/top/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor)
+[![Repo Size](https://img.shields.io/github/repo-size/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor)
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=plastic&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=plastic&logo=react&logoColor=black)](https://react.dev/)
+[![Fastify](https://img.shields.io/badge/Fastify-5-000000?style=plastic&logo=fastify&logoColor=white)](https://fastify.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=plastic&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=plastic&logo=vite&logoColor=white)](https://vite.dev/)
+[![Zod](https://img.shields.io/badge/Zod-validated-3068B7?style=plastic&logo=zod&logoColor=white)](https://zod.dev/)
+[![CodeMirror](https://img.shields.io/badge/CodeMirror-6-D30707?style=plastic&logo=codemirror&logoColor=white)](https://codemirror.net/)
+
+[![Linter: ESLint](https://img.shields.io/badge/lint-eslint-4B32C3?style=plastic&logo=eslint&logoColor=white)](https://eslint.org/)
+[![Tested with Vitest](https://img.shields.io/badge/tested%20with-vitest-6E9F18?style=plastic&logo=vitest&logoColor=white)](https://vitest.dev/)
+
+[![BYOK](https://img.shields.io/badge/LLM-Bring_Your_Own_Key-green?style=plastic)](#llm-integration)
+[![Issues](https://img.shields.io/github/issues/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=plastic)](https://github.com/aelena/xsp-editor/pulls)
+<!-- badges-end -->
 
 A web-based editor for authoring, validating, and testing XML-Structured Prompts (XSP).
 

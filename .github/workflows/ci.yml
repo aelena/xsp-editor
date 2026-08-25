@@ -1,0 +1,118 @@
+name: CI
+
+# The server and the client are separate npm projects with separate lockfiles,
+# so they get separate jobs. A failure then names which side broke without
+# anyone having to read the log to find out.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Supersede an in-flight run when the branch moves. Reviewing a result for a
+  # commit that has already been replaced wastes the reviewer's time as well as
+  # the minutes.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: server (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Without this, one platform failing cancels the other and hides whether
+      # the problem is the change or the platform, which is the only thing a
+      # matrix is for.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['24']
+        include:
+          # The LTS floor, on one platform. Development happens on 24, so that is
+          # what gets the full matrix; 22 is here to catch a dependency quietly
+          # requiring something newer than the oldest version we claim to run on.
+          - os: ubuntu-latest
+            node: '22'
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # `ci` rather than `install`: it installs exactly the lockfile and fails if
+      # package.json and the lockfile disagree, which is a thing worth failing on.
+      - run: npm ci
+
+      - run: npm run lint
+
+      # Separated from the build so a failure says which of the two it was.
+      # Vitest strips types without checking them, so a green test run is not
+      # evidence that this passes: that is exactly how this repo ended up with
+      # months of green tests and a build that had not compiled since May.
+      - run: npm run typecheck
+
+      - run: npm run build
+
+      # Both reporters: the default one for a human reading the log, the JSON one
+      # for the check below.
+      - run: npm test -- --reporter=default --reporter=json --outputFile=vitest-results.json
+
+      # A green suite that quietly ran twelve of thirteen files is worse than a
+      # red one. This was not hypothetical: three consecutive runs in a container
+      # reported success over three different subsets of the tests.
+      - name: Every test file was executed
+        run: node ../scripts/verify-test-files.mjs . vitest-results.json
+
+  client:
+    name: client (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['24']
+        include:
+          - os: ubuntu-latest
+            node: '22'
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      # `tsc -b && vite build`, so this also proves it bundles.
+      - run: npm run build
+
+      # Both reporters: the default one for a human reading the log, the JSON one
+      # for the check below.
+      - run: npm test -- --reporter=default --reporter=json --outputFile=vitest-results.json
+
+      # A green suite that quietly ran twelve of thirteen files is worse than a
+      # red one. This was not hypothetical: three consecutive runs in a container
+      # reported success over three different subsets of the tests.
+      - name: Every test file was executed
+        run: node ../scripts/verify-test-files.mjs . vitest-results.json

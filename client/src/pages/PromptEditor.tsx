@@ -265,7 +265,8 @@ export default function PromptEditor() {
       setIsSaving(false)
     }
   }, [
-    isLegacyMode,
+    // isLegacyMode is not read in here, and it is `!!id` with id already listed,
+    // so it cannot change on its own.
     id,
     name,
     description,

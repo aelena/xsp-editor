@@ -152,9 +152,12 @@ export default function PromptList() {
                   {data.prompts.map((prompt) => (
                     <tr key={prompt.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <Link
+                          to={`/prompts/${prompt.id}/edit`}
+                          className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                        >
                           {prompt.name}
-                        </div>
+                        </Link>
                         <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
                           {prompt.description}
                         </div>

@@ -3,9 +3,9 @@ import {
   useProjects,
   useCreateProject,
   useDeleteProject,
+  useDirectoryListing,
   type Project,
 } from '../api/projects.ts'
-import { apiFetch } from '../api/client.ts'
 
 interface ProjectSelectorProps {
   currentProjectId: string | null
@@ -23,31 +23,24 @@ export default function ProjectSelector({
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
   const [error, setError] = useState('')
-  const [browsing, setBrowsing] = useState(false)
+  // Undefined means "not browsing". A string means "browsing, showing this
+  // path", and the empty string means "browsing, wherever the server starts",
+  // which is how the picker opens without the client having to guess a home
+  // directory it cannot know.
+  const [browsePath, setBrowsePath] = useState<string | undefined>(undefined)
 
   const projects = data?.projects ?? []
 
-  const handleBrowse = async () => {
-    setBrowsing(true)
-    try {
-      const result = await apiFetch<{ path: string | null; cancelled?: boolean }>(
-        '/browse-folder',
-        { method: 'POST' },
-      )
-      if (result.path) {
-        setNewPath(result.path)
-        if (!newName.trim()) {
-          // Auto-fill name from last folder segment
-          const segments = result.path.replace(/\\/g, '/').split('/')
-          const last = segments.filter(Boolean).pop() || ''
-          setNewName(last)
-        }
-      }
-    } catch {
-      // Fallback: just let the user type manually
-    } finally {
-      setBrowsing(false)
+  const listing = useDirectoryListing(browsePath, browsePath !== undefined)
+
+  const chooseFolder = (path: string) => {
+    setNewPath(path)
+    if (!newName.trim()) {
+      // The last segment is almost always the name someone would have typed.
+      const last = path.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? ''
+      setNewName(last)
     }
+    setBrowsePath(undefined)
   }
 
   const handleAdd = async () => {
@@ -109,14 +102,79 @@ export default function ProjectSelector({
               />
               <button
                 type="button"
-                onClick={handleBrowse}
-                disabled={browsing}
-                className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-50"
+                onClick={() =>
+                  setBrowsePath(browsePath === undefined ? newPath.trim() : undefined)
+                }
+                className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 shrink-0"
                 title="Browse for folder"
               >
-                {browsing ? '...' : 'Browse'}
+                {browsePath === undefined ? 'Browse' : 'Close'}
               </button>
             </div>
+
+            {browsePath !== undefined && (
+              <div className="border border-gray-300 dark:border-gray-600 rounded text-xs overflow-hidden">
+                <div className="px-2 py-1 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 truncate font-mono">
+                  {listing.isLoading ? 'Reading...' : (listing.data?.current ?? '')}
+                </div>
+
+                {listing.isError && (
+                  <p className="px-2 py-1 text-red-500">
+                    Cannot read that folder.
+                  </p>
+                )}
+
+                <ul className="max-h-40 overflow-y-auto">
+                  {listing.data?.parent && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => setBrowsePath(listing.data!.parent!)}
+                        className="w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
+                      >
+                        .. up
+                      </button>
+                    </li>
+                  )}
+                  {listing.data?.directories.map((dir) => (
+                    <li key={dir.path}>
+                      <button
+                        type="button"
+                        onClick={() => setBrowsePath(dir.path)}
+                        className="w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 truncate"
+                      >
+                        {dir.name}
+                      </button>
+                    </li>
+                  ))}
+                  {listing.data?.directories.length === 0 && (
+                    <li className="px-2 py-1 text-gray-500 dark:text-gray-400">
+                      No subfolders
+                    </li>
+                  )}
+                </ul>
+
+                {/* Choosing is separate from navigating on purpose: a folder can
+                    be both a place to look inside and the answer. */}
+                <div className="flex gap-1 px-2 py-1 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    disabled={!listing.data}
+                    onClick={() => chooseFolder(listing.data!.current)}
+                    className="px-2 py-0.5 bg-blue-600 text-white rounded disabled:opacity-50"
+                  >
+                    Use this folder
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrowsePath(undefined)}
+                    className="px-2 py-0.5 border border-gray-300 dark:border-gray-600 rounded dark:text-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             {error && <p className="text-[10px] text-red-500">{error}</p>}
             <button
               onClick={handleAdd}

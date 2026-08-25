@@ -23,6 +23,33 @@ export interface GitLogEntry {
   message: string
 }
 
+export interface DirectoryListing {
+  current: string
+  /** Null at a filesystem root, so the caller knows not to offer "up". */
+  parent: string | null
+  directories: { name: string; path: string }[]
+}
+
+/**
+ * List the directories inside a path, for the folder picker.
+ *
+ * Omitting the path asks the server to start from the user's home directory,
+ * which is the only sensible starting point it can know about.
+ */
+export function useDirectoryListing(path: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['browse-folder', path ?? ''],
+    queryFn: () =>
+      apiFetch<DirectoryListing>(
+        `/browse-folder${path ? `?path=${encodeURIComponent(path)}` : ''}`,
+      ),
+    enabled,
+    // Directories change under us while the picker is open, and a stale listing
+    // is worse than a slightly slower one.
+    staleTime: 0,
+  })
+}
+
 export function useProjects() {
   return useQuery({
     queryKey: ['projects'],

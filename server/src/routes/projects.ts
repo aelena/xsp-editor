@@ -2,13 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { homedir } from "node:os";
+import { join, resolve, dirname } from "node:path";
 import { createProjectSchema, updateProjectSchema, type ProjectRecord } from "../schemas/projects.js";
 import { isGitRepo, gitInit, gitStatus, gitAdd, gitCommit, gitLog, gitDiff } from "../services/git.js";
-
-const execFileAsync = promisify(execFile);
 
 // In-memory project store (simple, no adapter needed)
 export const projects = new Map<string, ProjectRecord>();
@@ -118,102 +115,54 @@ export function registerProjectRoutes(app: FastifyInstance): void {
     return reply.status(204).send();
   });
 
-  // Browse: open native OS folder picker dialog
-  app.post("/api/v1/browse-folder", async (_request, reply) => {
-    const platform = process.platform;
-
-    try {
-      if (platform === "win32") {
-        // Shell.Application.BrowseForFolder (avoids STA/WinForms threading issues when spawned from Node)
-        const script = `
-$app = New-Object -ComObject Shell.Application
-$folder = $app.BrowseForFolder(0, "Select project folder", 0, 0)
-if ($folder -and $folder.Self -and $folder.Self.Path) {
-  Write-Output $folder.Self.Path
-}`;
-        const { stdout } = await execFileAsync("powershell", [
-          "-NoProfile",
-          "-ExecutionPolicy", "Bypass",
-          "-Command",
-          script,
-        ], { timeout: 60000 });
-        const selected = stdout.trim();
-        if (selected) {
-          return reply.send({ path: selected });
-        }
-        return reply.send({ path: null, cancelled: true });
-      } else if (platform === "darwin") {
-        // macOS: osascript
-        const { stdout } = await execFileAsync("osascript", [
-          "-e",
-          'choose folder with prompt "Select project folder"',
-        ], { timeout: 60000 });
-        const selected = stdout.trim().replace(/^alias /, "");
-        if (selected) {
-          // Convert macOS alias path to POSIX
-          const { stdout: posixPath } = await execFileAsync("osascript", [
-            "-e",
-            `POSIX path of "${selected}"`,
-          ]);
-          return reply.send({ path: posixPath.trim() });
-        }
-        return reply.send({ path: null, cancelled: true });
-      } else {
-        // Linux: zenity if available
-        try {
-          const { stdout } = await execFileAsync("zenity", [
-            "--file-selection",
-            "--directory",
-            "--title=Select project folder",
-          ], { timeout: 60000 });
-          const selected = stdout.trim();
-          if (selected) {
-            return reply.send({ path: selected });
-          }
-        } catch {
-          // zenity not available or cancelled
-        }
-        return reply.send({ path: null, cancelled: true });
-      }
-    } catch {
-      // Dialog was cancelled or errored
-      return reply.send({ path: null, cancelled: true });
-    }
-  });
-
-  // Browse: list directory contents (fallback for browsing)
-  // Browse directory contents — restricted to registered project paths only
+  /**
+   * List the directories inside a path, so the client can offer a folder picker
+   * of its own.
+   *
+   * This replaced a handler that shell-executed the platform's native dialog:
+   * PowerShell's BrowseForFolder on Windows, osascript on macOS, zenity on
+   * Linux. That approach cannot work from a server process. The dialog opens on
+   * whatever desktop session the server happens to be attached to, with no
+   * owner window, so in practice it appeared behind everything or nowhere at
+   * all, and the request sat blocked for up to sixty seconds while the button
+   * showed an ellipsis. It also could not be tested.
+   *
+   * It is deliberately not restricted to registered project paths. Choosing the
+   * folder for a *new* project is exactly the case where no registration exists
+   * yet, which is why the old restriction made the fallback useless.
+   *
+   * What it exposes is directory names, to whoever can reach this port. For a
+   * tool that exists to open local projects that is the feature, and on
+   * localhost the caller is the user. Reading file *contents* stays restricted
+   * to registered projects, which is where the useful boundary is. If this ever
+   * listens on anything but loopback, the API token has to become mandatory.
+   */
   app.get("/api/v1/browse-folder", async (request, reply) => {
-    const { path: dirPath } = request.query as { path?: string };
-    if (!dirPath) {
-      return reply.status(400).send({ error: "path query param is required" });
-    }
+    const { path: requested } = request.query as { path?: string };
 
-    if (!isRegisteredProjectPath(dirPath)) {
-      // Also allow subdirectories of registered projects
-      let allowed = false;
-      for (const p of projects.values()) {
-        if (dirPath.startsWith(p.path)) {
-          allowed = true;
-          break;
-        }
-      }
-      if (!allowed) {
-        return reply.status(403).send({ error: "Path is not within a registered project" });
-      }
-    }
+    // No path means "start somewhere the user recognises".
+    const target = resolve(requested && requested.trim() ? requested : homedir());
+    const parent = dirname(target);
 
     try {
-      const entries = await readdir(dirPath, { withFileTypes: true });
-      const dirs = entries
+      const entries = await readdir(target, { withFileTypes: true });
+      const directories = entries
         .filter((e) => e.isDirectory() && !e.name.startsWith("."))
         .map((e) => ({
           name: e.name,
-          path: join(dirPath, e.name).replace(/\\/g, "/"),
+          path: join(target, e.name).replace(/\\/g, "/"),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
-      return reply.send({ current: dirPath, directories: dirs });
-    } catch {
+
+      return reply.send({
+        current: target.replace(/\\/g, "/"),
+        // Null at the root, so the client knows there is no "up" to offer
+        // rather than having to compare strings to work it out.
+        parent: parent === target ? null : parent.replace(/\\/g, "/"),
+        directories,
+      });
+    } catch (err) {
+      request.log.warn({ err, target }, "could not list directory");
       return reply.status(400).send({ error: "Cannot read directory" });
     }
   });

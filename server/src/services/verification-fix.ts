@@ -12,13 +12,39 @@ export interface FixResult {
   variables?: FixVariablesInput;
 }
 
+const CDATA_SECTION = /<!\[CDATA\[[\s\S]*?\]\]>/g;
+
+/**
+ * Apply a transformation to everything except CDATA sections.
+ *
+ * CDATA means "treat this as raw text". Someone pasting a document into <input>
+ * is not asking for the document to be edited, so a fix that rewrites markup
+ * must not reach inside one. Without this, an empty tag that happened to appear
+ * in pasted data was silently deleted from it.
+ */
+function outsideCdata(
+  content: string,
+  transform: (chunk: string) => string,
+): string {
+  let out = "";
+  let cursor = 0;
+
+  for (const match of content.matchAll(CDATA_SECTION)) {
+    const start = match.index ?? 0;
+    out += transform(content.slice(cursor, start)) + match[0];
+    cursor = start + match[0].length;
+  }
+
+  return out + transform(content.slice(cursor));
+}
+
 /**
  * Remove empty XML elements: <tag></tag> or <tag attr="x">  </tag>
  */
 export function fixEmptySections(content: string): string {
   // Match empty elements (tag with optional attributes, whitespace-only content)
   const emptyTagRegex = /<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>\s*<\/\1>/gi;
-  return content.replace(emptyTagRegex, "");
+  return outsideCdata(content, (chunk) => chunk.replace(emptyTagRegex, ""));
 }
 
 /**
@@ -31,7 +57,13 @@ export function fixCdataForInput(content: string): string {
     if (trimmed.startsWith("<![CDATA[") && trimmed.endsWith("]]>")) {
       return `<${tagName}${attrs}>${inner}</${tagName}>`;
     }
-    return `<${tagName}${attrs}><![CDATA[${inner}]]></${tagName}>`;
+    // The one sequence that cannot appear inside a CDATA section is its own
+    // terminator. Wrapping content containing "]]>" without splitting it ends
+    // the section early and leaves everything after it unquoted, which is the
+    // failure this wrapper exists to prevent. XML expresses a literal ]]> by
+    // closing and reopening around it.
+    const escaped = inner.replace(/\]\]>/g, "]]]]><![CDATA[>");
+    return `<${tagName}${attrs}><![CDATA[${escaped}]]></${tagName}>`;
   });
 }
 
@@ -51,11 +83,16 @@ export function fixVariableDocs(
 
   for (const v of varMatch) {
     const name = v.slice(1); // remove $
-    if (!result[name] || !result[name].description) {
-      result[name] = result[name]
-        ? { ...result[name], description: result[name].description || stub.description }
-        : stub;
-    }
+    const existing = result[name];
+    if (existing?.description) continue;
+
+    // Inside this branch the description is known to be missing, so there was
+    // never anything to preserve about it: the old `description || stub` could
+    // only ever resolve to the stub. Anything else on the entry, `required` in
+    // particular, belongs to the user and stays.
+    result[name] = existing
+      ? { ...existing, description: stub.description }
+      : { ...stub };
   }
 
   return result;

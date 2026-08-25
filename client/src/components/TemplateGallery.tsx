@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useTemplates } from '../api/files.ts'
 
 interface TemplateGalleryProps {
@@ -20,9 +21,22 @@ export default function TemplateGallery({
 
   return (
     <div className="px-2" data-testid="template-gallery">
-      <h4 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 mb-1.5">
-        Templates
-      </h4>
+      {/* This gallery inserts templates; it does not create them. Creating
+          lives on the Templates page, and without a way through from here the
+          only affordance in sight was "pick one of these five", which reads as
+          the whole feature. */}
+      <div className="flex items-baseline justify-between px-1 mb-1.5">
+        <h4 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+          Templates
+        </h4>
+        <Link
+          to="/templates"
+          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          title="Create or edit templates"
+        >
+          + Add
+        </Link>
+      </div>
       <div className="space-y-1">
         {templates.map((t) => (
           <button

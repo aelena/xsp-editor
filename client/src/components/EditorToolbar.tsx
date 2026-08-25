@@ -82,6 +82,12 @@ export default function EditorToolbar({
           </span>
         )}
         <Link
+          to="/projects"
+          className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
+        >
+          Projects
+        </Link>
+        <Link
           to="/tags"
           className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
         >

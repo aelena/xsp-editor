@@ -9,6 +9,9 @@ import {
   type PromptVersionRecord,
 } from "../schemas/prompts.js";
 import { uuidParamSchema, promptVersionParamSchema } from "../schemas/params.js";
+import { initialMembership, normalise } from "../services/membership.js";
+import { ARCHIVE_PROJECT_ID } from "../schemas/projects.js";
+import type { AuditLog } from "../services/audit.js";
 import {
   incrementVersion,
   extractTagsUsed,
@@ -19,6 +22,7 @@ import {
 export function registerPromptRoutes(
   app: FastifyInstance,
   storage: StorageAdapter,
+  audit: AuditLog,
 ): void {
   // List all prompts
   app.get("/api/v1/prompts", async (request, reply) => {
@@ -76,10 +80,21 @@ export function registerPromptRoutes(
       updated_at: now,
       verification_status: "unchecked",
       metadata: input.metadata || {},
-      deleted: false,
+      // A prompt created inside a project belongs to that project; one created
+      // from nowhere belongs to General. It is never a member of nothing.
+      projects: initialMembership(input.project_id),
     };
 
     await storage.createPrompt(prompt);
+    await audit.record({
+      kind: "prompt",
+      artifact_id: id,
+      artifact_name: prompt.name,
+      operation: "created",
+      project: prompt.projects[0],
+      before: [],
+      after: prompt.projects,
+    });
 
     // Save the initial version to blob storage
     const versionRecord: PromptVersionRecord = {
@@ -182,7 +197,14 @@ export function registerPromptRoutes(
     return reply.send(updated);
   });
 
-  // Soft-delete a prompt
+  /**
+   * Archive a prompt.
+   *
+   * Nothing is destroyed, so this is what deletion means. It is the same
+   * operation as POST /:id/archive and kept because DELETE is what a REST client
+   * reaches for; the response says where the prompt went rather than answering a
+   * bare 204 that implies it is gone.
+   */
   app.delete("/api/v1/prompts/:id", async (request, reply) => {
     const paramResult = uuidParamSchema.safeParse(request.params);
     if (!paramResult.success) {
@@ -194,8 +216,19 @@ export function registerPromptRoutes(
       return reply.status(404).send({ error: "Prompt not found" });
     }
 
+    const before = normalise(existing.projects);
     await storage.deletePrompt(id);
-    return reply.status(204).send();
+    await audit.record({
+      kind: "prompt",
+      artifact_id: id,
+      artifact_name: existing.name,
+      operation: "archived",
+      project: ARCHIVE_PROJECT_ID,
+      before,
+      after: [ARCHIVE_PROJECT_ID],
+      detail: { via: "DELETE" },
+    });
+    return reply.send({ archived: true, projects: [ARCHIVE_PROJECT_ID] });
   });
 
   // List all versions of a prompt

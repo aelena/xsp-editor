@@ -1,10 +1,14 @@
+import { v4 as uuidv4 } from "uuid";
 import { readdir, readFile } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StorageAdapter } from "./storage/adapter.js";
 import type { TagRecord } from "./schemas/tags.js";
 import type { ConstraintRecord } from "./schemas/constraints.js";
-import type { TemplateRecord } from "./schemas/templates.js";
+import {
+  GENERAL_PROJECT_ID,
+  reservedProjects,
+} from "./schemas/projects.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(__dirname, "templates");
@@ -220,7 +224,6 @@ const TEMPLATE_DESCRIPTIONS: Record<string, { description: string; category: str
 };
 
 const EXAMPLE_PROMPTS: Array<{
-  id: string;
   name: string;
   description: string;
   content: string;
@@ -231,7 +234,6 @@ const EXAMPLE_PROMPTS: Array<{
   metadata: Record<string, string>;
 }> = [
   {
-    id: "classify-intent",
     name: "classify-intent",
     description: "Classifies customer messages into support categories with high confidence",
     author: "xsp-book",
@@ -285,7 +287,6 @@ const EXAMPLE_PROMPTS: Array<{
 </examples>`,
   },
   {
-    id: "extract-entities",
     name: "extract-entities",
     description: "Extracts structured entity data from unstructured text into JSON",
     author: "xsp-book",
@@ -355,7 +356,6 @@ const EXAMPLE_PROMPTS: Array<{
 </examples>`,
   },
   {
-    id: "summarize-report",
     name: "summarize-report",
     description: "Summarizes long documents for executive audiences with strict length constraints",
     author: "xsp-book",
@@ -406,7 +406,6 @@ const EXAMPLE_PROMPTS: Array<{
 </checks>`,
   },
   {
-    id: "customer-support-reply",
     name: "customer-support-reply",
     description: "Generates safe customer support replies with injection defense and PII protection",
     author: "xsp-book",
@@ -469,7 +468,6 @@ const EXAMPLE_PROMPTS: Array<{
 </output_format>`,
   },
   {
-    id: "blog-post-draft",
     name: "blog-post-draft",
     description: "Generates long-form blog content using the VCO framework with voice and tone controls",
     author: "xsp-book",
@@ -534,7 +532,6 @@ const EXAMPLE_PROMPTS: Array<{
 </output_contract>`,
   },
   {
-    id: "code-review-feedback",
     name: "code-review-feedback",
     description: "Reviews code changes and provides structured feedback with severity ratings",
     author: "xsp-book",
@@ -600,9 +597,22 @@ const EXAMPLE_PROMPTS: Array<{
 ];
 
 export async function seedDefaults(storage: StorageAdapter): Promise<void> {
+  // The reserved projects come first, because everything seeded below has to
+  // belong to one and General is where it belongs.
+  //
+  // Created individually rather than behind an "are there any projects?" check:
+  // a store that somehow had a user project but not General would otherwise stay
+  // broken forever, and the invariant that both always exist is worth more than
+  // saving two lookups at startup.
+  for (const project of reservedProjects(new Date().toISOString())) {
+    if (!(await storage.getProject(project.id))) {
+      await storage.createProject(project);
+    }
+  }
+
   // Seed tags if none exist
   const existingTags = await storage.listTags();
-  if (existingTags.length === 0) {
+  if (existingTags.total === 0) {
     const now = new Date().toISOString();
     for (const tag of DEFAULT_TAGS) {
       await storage.createTag({
@@ -617,7 +627,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
 
   // Seed constraints if none exist
   const existingConstraints = await storage.listConstraints();
-  if (existingConstraints.length === 0) {
+  if (existingConstraints.total === 0) {
     const now = new Date().toISOString();
     for (const constraint of DEFAULT_CONSTRAINTS) {
       await storage.createConstraint({
@@ -653,6 +663,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
             is_builtin: true,
             created_at: now,
             updated_at: now,
+            projects: [GENERAL_PROJECT_ID],
           });
           count++;
         }
@@ -670,11 +681,17 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
     for (const prompt of EXAMPLE_PROMPTS) {
       await storage.createPrompt({
         ...prompt,
+        // Every :id route validates as a UUID and POST /prompts generates one,
+        // so prd.md's "id": "uuid" is the contract. Seeding with the slug
+        // produced prompts the list happily showed and the detail endpoint
+        // rejected with a 400, which is why opening one from the list gave an
+        // empty editor. The slug stays as the name, where it is meant to be.
+        id: uuidv4(),
         version: "1.0.0",
         verification_status: "unchecked",
         created_at: now,
         updated_at: now,
-        deleted: false,
+        projects: [GENERAL_PROJECT_ID],
       });
     }
     console.log(`Seeded ${EXAMPLE_PROMPTS.length} example prompts`);

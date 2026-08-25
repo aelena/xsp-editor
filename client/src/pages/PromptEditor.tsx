@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ProjectLabels } from '../components/ProjectLabels.tsx'
+import { useFork } from '../api/membership.ts'
 import {
   usePrompt,
   useCreatePrompt,
@@ -10,7 +12,6 @@ import { useConstraints } from '../api/constraints.ts'
 import {
   verifyContent,
   verifyFix,
-  isVerificationFixable,
   type CheckResult,
 } from '../api/verify.ts'
 import { useFileTree, useSaveFile, useFileContent } from '../api/files.ts'
@@ -264,7 +265,8 @@ export default function PromptEditor() {
       setIsSaving(false)
     }
   }, [
-    isLegacyMode,
+    // isLegacyMode is not read in here, and it is `!!id` with id already listed,
+    // so it cannot change on its own.
     id,
     name,
     description,
@@ -398,6 +400,7 @@ export default function PromptEditor() {
               </span>
             )}
           </div>
+          {id && <ProjectLabels kind="prompts" artifactKey={id} />}
         </div>
         <div className="flex items-center gap-2">
           {isDirty && (
@@ -422,6 +425,7 @@ export default function PromptEditor() {
               v{prompt.version}
             </span>
           )}
+          {id && <ForkButton id={id} />}
           <Link
             to="/tags"
             className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
@@ -683,5 +687,34 @@ export default function PromptEditor() {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Duplicate this prompt and open the copy.
+ *
+ * It lands in the copy rather than staying put, because the first thing anyone
+ * does after duplicating something is rename it, and because two prompts with
+ * near-identical names and no indication of which one you are looking at is how
+ * people edit the wrong one.
+ */
+function ForkButton({ id }: { id: string }) {
+  const navigate = useNavigate()
+  const fork = useFork<{ id: string }>('prompts', id)
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        fork.mutate(undefined, {
+          onSuccess: (created) => navigate(`/prompts/${created.id}/edit`),
+        })
+      }
+      disabled={fork.isPending}
+      title="Create an independent copy, with its own version history"
+      className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300 disabled:opacity-50"
+    >
+      {fork.isPending ? 'Forking...' : 'Fork'}
+    </button>
   )
 }

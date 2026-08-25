@@ -1,15 +1,25 @@
 import type { FastifyInstance } from "fastify";
 import type { StorageAdapter } from "../storage/adapter.js";
-import { createTemplateSchema, updateTemplateSchema } from "../schemas/templates.js";
+import {
+  createTemplateSchema,
+  updateTemplateSchema,
+  listTemplatesQuerySchema,
+} from "../schemas/templates.js";
 import { nameParamSchema } from "../schemas/params.js";
+import { initialMembership } from "../services/membership.js";
 
 export function registerTemplateRoutes(
   app: FastifyInstance,
   storage: StorageAdapter,
 ): void {
   // List all templates
-  app.get("/api/v1/templates", async (_request, reply) => {
-    const templates = await storage.listTemplates();
+  app.get("/api/v1/templates", async (request, reply) => {
+    const parsed = listTemplatesQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid query parameters" });
+    }
+    // Archived templates are excluded unless asked for, the same as prompts.
+    const templates = await storage.listTemplates(parsed.data);
     return reply.send({ templates });
   });
 
@@ -37,7 +47,7 @@ export function registerTemplateRoutes(
       });
     }
 
-    const { name, description, content, category } = parseResult.data;
+    const { name, description, content, category, project_id } = parseResult.data;
 
     const existing = await storage.getTemplate(name);
     if (existing) {
@@ -55,6 +65,7 @@ export function registerTemplateRoutes(
       is_builtin: false,
       created_at: now,
       updated_at: now,
+      projects: initialMembership(project_id),
     };
 
     await storage.createTemplate(template);

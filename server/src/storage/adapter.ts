@@ -2,6 +2,7 @@ import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
 import type { TemplateRecord } from "../schemas/templates.js";
+import type { ProjectRecord } from "../schemas/projects.js";
 
 export interface ListConstraintsOptions {
   page: number;
@@ -37,6 +38,14 @@ export interface ListPromptsOptions {
   search?: string;
   author?: string;
   tag?: string;
+  /** Only prompts belonging to this project id. */
+  project?: string;
+  /**
+   * Archived prompts are excluded by default, which is what replaced the old
+   * `deleted` filter. Opting in is how the Archive view is built, rather than
+   * having a second listing method that differs by one predicate.
+   */
+  include_archived?: boolean;
 }
 
 export interface ListPromptsResult {
@@ -78,10 +87,22 @@ export interface StorageAdapter {
   ): Promise<PaginatedResult<ConstraintRecord>>;
   deleteConstraint(id: string): Promise<void>;
 
+  // Projects: a logical grouping, optionally also a folder on disk.
+  //
+  // These used to live in a module-level Map inside routes/projects.ts, which
+  // meant the registry was global mutable state owned by a route file and
+  // impossible to isolate between tests.
+  createProject(project: ProjectRecord): Promise<void>;
+  getProject(id: string): Promise<ProjectRecord | null>;
+  updateProject(id: string, updates: Partial<ProjectRecord>): Promise<void>;
+  listProjects(): Promise<ProjectRecord[]>;
+  deleteProject(id: string): Promise<void>;
+
   // Template CRUD (Table Storage)
   createTemplate(template: TemplateRecord): Promise<void>;
   getTemplate(name: string): Promise<TemplateRecord | null>;
   updateTemplate(name: string, updates: Partial<TemplateRecord>): Promise<void>;
-  listTemplates(): Promise<TemplateRecord[]>;
+  /** `project` filters by membership; templates are otherwise all returned. */
+  listTemplates(options?: { project?: string; include_archived?: boolean }): Promise<TemplateRecord[]>;
   deleteTemplate(name: string): Promise<void>;
 }

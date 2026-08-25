@@ -6,11 +6,10 @@ import ConstraintPicker from './ConstraintPicker.tsx'
 import type { Tag } from '../api/tags.ts'
 import type { Constraint } from '../api/constraints.ts'
 import type { Project } from '../api/projects.ts'
-
-interface FileEntry {
-  path: string
-  type: 'file' | 'directory'
-}
+// The canonical shape, not a local narrowing of it. The local version omitted
+// `name`, which FileTree sorts and renders by, so anything satisfying the local
+// type would have crashed on localeCompare or drawn blank labels.
+import type { FileEntry } from '../api/files.ts'
 
 interface EditorSidebarProps {
   currentProjectId: string | null

@@ -3,3 +3,12 @@ dist/
 .env
 *.log
 prd.json
+
+# Local tool settings, and the OneDrive conflict copies it accumulates.
+.claude/
+
+# The audit trail is real data, not build output.
+server/data/
+
+# CI writes this so the run can be checked for dropped test files.
+vitest-results.json

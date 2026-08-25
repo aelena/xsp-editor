@@ -183,7 +183,7 @@ describe('TagRegistry', () => {
     await user.click(screen.getByText('Save'))
 
     await waitFor(() => {
-      const postCalls = fetchSpy.mock.calls.filter((call) => {
+      const postCalls = fetchSpy.mock.calls.filter((call: unknown[]) => {
         const opts = call[1] as RequestInit | undefined
         return opts?.method === 'POST'
       })
@@ -239,7 +239,7 @@ describe('TagRegistry', () => {
     await user.click(screen.getByText('Save'))
 
     await waitFor(() => {
-      const putCalls = fetchSpy.mock.calls.filter((call) => {
+      const putCalls = fetchSpy.mock.calls.filter((call: unknown[]) => {
         const opts = call[1] as RequestInit | undefined
         return opts?.method === 'PUT'
       })
@@ -264,7 +264,7 @@ describe('TagRegistry', () => {
     await user.click(screen.getByText('Delete'))
 
     await waitFor(() => {
-      const deleteCalls = fetchSpy.mock.calls.filter((call) => {
+      const deleteCalls = fetchSpy.mock.calls.filter((call: unknown[]) => {
         const opts = call[1] as RequestInit | undefined
         return opts?.method === 'DELETE'
       })

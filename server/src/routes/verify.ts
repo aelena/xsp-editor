@@ -5,6 +5,7 @@ import {
   verifyFixRequestSchema,
 } from "../schemas/verify.js";
 import { runVerification } from "../services/verification.js";
+import { collectAll } from "../storage/collect.js";
 import {
   applyVerificationFix,
   isRuleBasedFixable,
@@ -25,8 +26,12 @@ export function registerVerifyRoutes(
 
     const { content, variables } = parseResult.data;
 
-    // Fetch all tags from registry for context
-    const tags = await storage.listTags();
+    // The whole approved vocabulary, not the first page of it: listTags is
+    // paginated and defaults to 50, so reading result.items here would quietly
+    // stop recognising tags once the registry outgrew one page.
+    const tags = await collectAll((page, limit) =>
+      storage.listTags({ page, limit }),
+    );
 
     const result = runVerification(content, {
       approvedTags: tags,

@@ -8,6 +8,7 @@ import ConstraintLibrary from './pages/ConstraintLibrary.tsx'
 import Templates from './pages/Templates.tsx'
 import Settings from './pages/Settings.tsx'
 import PromptPlayground from './pages/PromptPlayground.tsx'
+import { Projects } from './pages/Projects.tsx'
 import Welcome from './pages/Welcome.tsx'
 import Help from './pages/Help.tsx'
 
@@ -25,6 +26,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route path="/projects" element={<Projects />} />
           <Route path="/prompts" element={<PromptList />} />
           <Route path="/prompts/new" element={<PromptEditor />} />
           <Route path="/prompts/:id/edit" element={<PromptEditor />} />

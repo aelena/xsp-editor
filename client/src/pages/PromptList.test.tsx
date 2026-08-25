@@ -274,7 +274,7 @@ describe('PromptList', () => {
 
     await waitFor(() => {
       const postCalls = fetchSpy.mock.calls.filter(
-        (call) => {
+        (call: unknown[]) => {
           const opts = call[1] as RequestInit | undefined
           return opts?.method === 'POST'
         },
@@ -314,6 +314,27 @@ describe('PromptList', () => {
       const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
       expect(lastCall[0]).toContain('page=1')
       expect(lastCall[0]).toContain('author=b')
+    })
+  })
+
+  it('opens the editor from the prompt name, not just the Edit button', async () => {
+    // The name is the thing a reader aims at. Making them find the Edit button
+    // at the far end of the row was the difference between one click and one
+    // click plus a horizontal scan.
+    mockFetch({
+      prompts: [makePrompt({ id: 'abc-123', name: 'classify-intent' })],
+      total: 1,
+      page: 1,
+      limit: 20,
+    })
+
+    render(<PromptList />, { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'classify-intent' })).toHaveAttribute(
+        'href',
+        '/prompts/abc-123/edit',
+      )
     })
   })
 })

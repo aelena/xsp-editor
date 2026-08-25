@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useLLMConfig,
   useUpdateLLMConfig,
   useTestConnection,
 } from '../api/llm.ts'
+import type { LLMConfig } from '../api/llm.ts'
 
 const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: [
@@ -17,34 +18,70 @@ const PROVIDER_MODELS: Record<string, string[]> = {
   custom: [],
 }
 
+/**
+ * Deciding whether there is anything to edit, and editing it, are two jobs.
+ *
+ * They used to be one component: the form kept its own defaults and an effect
+ * copied the fetched configuration over them once it arrived. That meant a
+ * render pass showing "anthropic" and an empty model before the real values
+ * appeared, and it meant a failed request left those defaults on screen looking
+ * exactly like saved settings, with a Save button ready to write them over
+ * whatever the server actually held.
+ *
+ * Splitting it removes the effect entirely: the form is only ever constructed
+ * once the configuration exists, so useState can initialise from it directly.
+ */
 export default function Settings() {
   const { data: config, isLoading } = useLLMConfig()
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500 dark:text-gray-400 dark:bg-gray-950">
+        Loading settings...
+      </div>
+    )
+  }
+
+  if (!config) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-3 dark:bg-gray-950">
+        <p className="text-gray-700 dark:text-gray-300">
+          Could not load the LLM configuration.
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          The form is hidden on purpose: showing defaults here would look like
+          your saved settings.
+        </p>
+        <Link
+          to="/prompts/new"
+          className="text-sm text-blue-600 hover:text-blue-700"
+        >
+          &larr; Back to Editor
+        </Link>
+      </div>
+    )
+  }
+
+  return <SettingsForm config={config} />
+}
+
+function SettingsForm({ config }: { config: LLMConfig }) {
   const updateConfig = useUpdateLLMConfig()
   const testConnection = useTestConnection()
 
-  const [provider, setProvider] = useState('anthropic')
-  const [model, setModel] = useState('')
+  const [provider, setProvider] = useState(config.provider || 'anthropic')
+  const [model, setModel] = useState(config.model || '')
   const [apiKey, setApiKey] = useState('')
-  const [maxTokens, setMaxTokens] = useState(1024)
-  const [temperature, setTemperature] = useState(0)
-  const [customBaseUrl, setCustomBaseUrl] = useState('')
+  const [maxTokens, setMaxTokens] = useState(config.default_max_tokens)
+  const [temperature, setTemperature] = useState(config.default_temperature)
+  const [customBaseUrl, setCustomBaseUrl] = useState(config.custom_base_url || '')
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    if (config) {
-      setProvider(config.provider || 'anthropic')
-      setModel(config.model || '')
-      setMaxTokens(config.default_max_tokens)
-      setTemperature(config.default_temperature)
-      setCustomBaseUrl(config.custom_base_url || '')
-    }
-  }, [config])
 
   const models = PROVIDER_MODELS[provider] || []
 
   const handleSave = async () => {
-    if (!apiKey && !config?.api_key_set) return
+    if (!apiKey && !config.api_key_set) return
     await updateConfig.mutateAsync({
       provider: provider as 'anthropic' | 'openai' | 'azure-openai' | 'custom',
       model: model || models[0] || 'gpt-4o',
@@ -64,14 +101,6 @@ export default function Settings() {
     setTestResult(null)
     const result = await testConnection.mutateAsync()
     setTestResult(result.success)
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen text-gray-500 dark:text-gray-400 dark:bg-gray-950">
-        Loading settings...
-      </div>
-    )
   }
 
   return (
@@ -151,7 +180,7 @@ export default function Settings() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
-                config?.api_key_set ? '••••••••••••• (key is set)' : 'Enter API key'
+                config.api_key_set ? '••••••••••••• (key is set)' : 'Enter API key'
               }
               className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
             />
@@ -215,7 +244,7 @@ export default function Settings() {
             </button>
             <button
               onClick={handleTestConnection}
-              disabled={testConnection.isPending || !config?.api_key_set}
+              disabled={testConnection.isPending || !config.api_key_set}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 dark:text-gray-300"
             >
               {testConnection.isPending ? 'Testing...' : 'Test Connection'}

@@ -222,6 +222,9 @@ export function checkVariableDocs(content: string, context: VerificationContext)
     };
   }
 
+  // Specified as an error in prd.md, not a warning: a template with an
+  // undocumented variable cannot be rendered safely by someone who did not
+  // write it. Two test suites disagreed about this; the PRD is what settles it.
   return {
     rule: "variable_docs",
     status: "failed",
@@ -414,12 +417,8 @@ export function checkConstraintConflicts(content: string): CheckResult {
 }
 
 export function checkExampleOverload(content: string): CheckResult {
-  const exampleRegex = /<example[\s>]/gi;
-  let count = 0;
-  while (exampleRegex.exec(content) !== null) count++;
-
-  // Nested <example> inside <examples> is expected, so divide by 2 if we have <examples> wrapper
-  // Actually, just count opening <example> tags (not <examples>)
+  // Opening <example> tags only. The negative lookahead keeps <examples>, the
+  // wrapper, from being counted as one of the things it wraps.
   const exactExampleRegex = /<example(?:\s[^>]*)?>(?!s)/gi;
   let exactCount = 0;
   while (exactExampleRegex.exec(content) !== null) exactCount++;
@@ -436,7 +435,7 @@ export function checkExampleOverload(content: string): CheckResult {
   return {
     rule: "example_overload",
     status: "warning",
-    message: `${exactCount} examples found — more than ${limit} may waste tokens without improving accuracy`,
+    message: `${exactCount} examples found, more than ${limit} may waste tokens without improving accuracy`,
     anti_pattern: "Example Overload",
   };
 }

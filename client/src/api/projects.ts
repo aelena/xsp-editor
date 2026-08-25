@@ -4,8 +4,11 @@ import { apiFetch } from './client.ts'
 export interface Project {
   id: string
   name: string
-  path: string
+  /** Null when the project is only a logical grouping and has no folder. */
+  path: string | null
   is_git_repo: boolean
+  /** General and Archive, which cannot be renamed or deleted. */
+  is_reserved: boolean
   created_at: string
   updated_at: string
 }
@@ -68,7 +71,9 @@ export function useProject(id: string | undefined) {
 export function useCreateProject() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { name: string; path: string }) =>
+    // The path is optional: a project can be nothing but a grouping, and only
+    // becomes a workspace when someone points it at a folder.
+    mutationFn: (data: { name: string; path?: string }) =>
       apiFetch<Project>('/projects', {
         method: 'POST',
         body: JSON.stringify(data),

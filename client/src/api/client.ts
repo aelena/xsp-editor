@@ -4,11 +4,22 @@ const API_BASE = '/api/v1'
 
 export class ApiError extends Error {
   status: number
+  /**
+   * The whole parsed error body, not just its message.
+   *
+   * Several endpoints answer 409 with the information the caller needs to ask
+   * the user a question and retry: `requires: "archive_or_general"` when a
+   * removal would leave a prompt with no project, or `orphan_count` when
+   * deleting a project would. Reducing that to a string threw away the only
+   * part the UI could act on.
+   */
+  body: Record<string, unknown>
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body: Record<string, unknown> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.body = body
   }
 }
 
@@ -41,6 +52,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       response.status,
       body.error || `Request failed with status ${response.status}`,
+      body,
     )
   }
 

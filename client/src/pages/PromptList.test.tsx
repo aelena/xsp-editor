@@ -274,7 +274,7 @@ describe('PromptList', () => {
 
     await waitFor(() => {
       const postCalls = fetchSpy.mock.calls.filter(
-        (call) => {
+        (call: unknown[]) => {
           const opts = call[1] as RequestInit | undefined
           return opts?.method === 'POST'
         },

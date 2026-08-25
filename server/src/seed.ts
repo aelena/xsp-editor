@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import type { StorageAdapter } from "./storage/adapter.js";
 import type { TagRecord } from "./schemas/tags.js";
 import type { ConstraintRecord } from "./schemas/constraints.js";
-import type { TemplateRecord } from "./schemas/templates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(__dirname, "templates");
@@ -602,7 +601,7 @@ const EXAMPLE_PROMPTS: Array<{
 export async function seedDefaults(storage: StorageAdapter): Promise<void> {
   // Seed tags if none exist
   const existingTags = await storage.listTags();
-  if (existingTags.length === 0) {
+  if (existingTags.total === 0) {
     const now = new Date().toISOString();
     for (const tag of DEFAULT_TAGS) {
       await storage.createTag({
@@ -617,7 +616,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
 
   // Seed constraints if none exist
   const existingConstraints = await storage.listConstraints();
-  if (existingConstraints.length === 0) {
+  if (existingConstraints.total === 0) {
     const now = new Date().toISOString();
     for (const constraint of DEFAULT_CONSTRAINTS) {
       await storage.createConstraint({

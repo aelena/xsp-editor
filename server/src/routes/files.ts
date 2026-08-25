@@ -102,7 +102,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
         size: stats.size,
         modified_at: stats.mtime.toISOString(),
       });
-    } catch (err) {
+    } catch {
       return reply.status(404).send({ error: "File not found" });
     }
   });
@@ -137,6 +137,10 @@ export function registerFileRoutes(app: FastifyInstance): void {
       await writeFile(fullPath, content, "utf-8");
       return reply.send({ path: filePath, message: "File saved" });
     } catch (err) {
+      // A write can fail for reasons the client cannot act on: permissions, a
+      // full disk, a path the OS rejects. The response stays generic; the cause
+      // has to go somewhere an operator can find it.
+      request.log.error({ err, filePath }, "failed to write file");
       return reply.status(500).send({
         error: "Failed to write file",
       });
@@ -193,6 +197,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
       await rename(fullOld, fullNew);
       return reply.send({ oldPath, newPath, message: "File renamed" });
     } catch (err) {
+      request.log.error({ err, oldPath, newPath }, "failed to rename file");
       return reply.status(500).send({
         error: "Failed to rename file",
       });

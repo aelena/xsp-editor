@@ -10,7 +10,6 @@ import { useConstraints } from '../api/constraints.ts'
 import {
   verifyContent,
   verifyFix,
-  isVerificationFixable,
   type CheckResult,
 } from '../api/verify.ts'
 import { useFileTree, useSaveFile, useFileContent } from '../api/files.ts'

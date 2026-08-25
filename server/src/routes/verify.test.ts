@@ -118,7 +118,7 @@ describe("POST /api/v1/verify", () => {
     expect(emptyCheck.message).toContain("input");
   });
 
-  it("should warn for undocumented variables", async () => {
+  it("should fail for undocumented variables", async () => {
     const { app } = createTestApp();
     await seedTags(app);
 
@@ -138,7 +138,10 @@ describe("POST /api/v1/verify", () => {
     const varCheck = body.checks.find(
       (c: { rule: string }) => c.rule === "variable_docs",
     );
-    expect(varCheck.status).toBe("warning");
+    // prd.md specifies variable_docs as an error, not a warning: a template
+    // whose variables are undocumented cannot be rendered safely by whoever
+    // did not write it.
+    expect(varCheck.status).toBe("failed");
     expect(varCheck.message).toContain("$customer");
   });
 

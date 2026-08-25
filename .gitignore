@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 prd.json
+
+# Local tool settings, and the OneDrive conflict copies it accumulates.
+.claude/

@@ -70,9 +70,14 @@ function mockFetchResponses(responses: Record<string, unknown>) {
   })
 }
 
+// The listTags and listConstraints responses are paginated: the client's Zod
+// schemas require total, page and limit, so a mock without them fails to parse
+// and the sidebar renders nothing.
+const emptyPage = { total: 0, page: 1, limit: 50 }
+
 const defaultMocks: Record<string, unknown> = {
-  '/tags': { tags: [] },
-  '/constraints': { constraints: [] },
+  '/tags': { tags: [], ...emptyPage },
+  '/constraints': { constraints: [], ...emptyPage },
   '/projects': { projects: [] },
   '/templates': { templates: [] },
 }
@@ -133,6 +138,9 @@ describe('PromptEditor', () => {
             updated_at: '2026-01-01T00:00:00Z',
           },
         ],
+        total: 2,
+        page: 1,
+        limit: 50,
       },
     })
 
@@ -162,6 +170,9 @@ describe('PromptEditor', () => {
             updated_at: '2026-01-01T00:00:00Z',
           },
         ],
+        total: 1,
+        page: 1,
+        limit: 50,
       },
     })
 

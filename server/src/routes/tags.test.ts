@@ -1,10 +1,11 @@
+import { createMemoryAuditLog } from "../services/audit.js";
 import { describe, it, expect } from "vitest";
 import { buildApp } from "../index.js";
 import { MemoryStorageAdapter } from "../storage/memory.js";
 
 function createTestApp() {
   const storage = new MemoryStorageAdapter();
-  const app = buildApp(storage);
+  const app = buildApp(storage, createMemoryAuditLog());
   return { app, storage };
 }
 

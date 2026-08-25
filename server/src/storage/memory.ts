@@ -10,6 +10,8 @@ import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
 import type { TemplateRecord } from "../schemas/templates.js";
+import type { ProjectRecord } from "../schemas/projects.js";
+import { ARCHIVE_PROJECT_ID } from "../schemas/projects.js";
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private prompts = new Map<string, PromptRecord>();
@@ -17,15 +19,18 @@ export class MemoryStorageAdapter implements StorageAdapter {
   private tags = new Map<string, TagRecord>();
   private constraints = new Map<string, ConstraintRecord>();
   private templates = new Map<string, TemplateRecord>();
+  private projects = new Map<string, ProjectRecord>();
 
   async createPrompt(prompt: PromptRecord): Promise<void> {
     this.prompts.set(prompt.id, { ...prompt });
   }
 
   async getPrompt(id: string): Promise<PromptRecord | null> {
+    // Archived prompts are returned. The old `deleted` flag hid them from this
+    // method too, which meant a soft-deleted prompt could not be viewed,
+    // restored or forked: it was a hard delete wearing a soft one's clothes.
     const prompt = this.prompts.get(id);
-    if (!prompt || prompt.deleted) return null;
-    return { ...prompt };
+    return prompt ? { ...prompt } : null;
   }
 
   async updatePrompt(
@@ -38,7 +43,15 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async listPrompts(options: ListPromptsOptions): Promise<ListPromptsResult> {
-    let results = Array.from(this.prompts.values()).filter((p) => !p.deleted);
+    let results = Array.from(this.prompts.values());
+
+    if (!options.include_archived) {
+      results = results.filter((p) => !p.projects.includes(ARCHIVE_PROJECT_ID));
+    }
+
+    if (options.project) {
+      results = results.filter((p) => p.projects.includes(options.project!));
+    }
 
     if (options.search) {
       const search = options.search.toLowerCase();
@@ -75,10 +88,15 @@ export class MemoryStorageAdapter implements StorageAdapter {
     };
   }
 
+  /**
+   * Archives. Nothing is ever destroyed, so this is the only "delete" there is,
+   * and Archive is exclusive: whatever the prompt belonged to before, it belongs
+   * to Archive alone now.
+   */
   async deletePrompt(id: string): Promise<void> {
     const existing = this.prompts.get(id);
     if (!existing) throw new Error(`Prompt ${id} not found`);
-    this.prompts.set(id, { ...existing, deleted: true });
+    this.prompts.set(id, { ...existing, projects: [ARCHIVE_PROJECT_ID] });
   }
 
   async saveVersion(version: PromptVersionRecord): Promise<void> {
@@ -224,14 +242,60 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.templates.set(name, { ...existing, ...updates });
   }
 
-  async listTemplates(): Promise<TemplateRecord[]> {
-    return Array.from(this.templates.values())
+  async listTemplates(options?: {
+    project?: string;
+    include_archived?: boolean;
+  }): Promise<TemplateRecord[]> {
+    let results = Array.from(this.templates.values());
+
+    if (!options?.include_archived) {
+      results = results.filter((t) => !t.projects.includes(ARCHIVE_PROJECT_ID));
+    }
+    if (options?.project) {
+      results = results.filter((t) => t.projects.includes(options.project!));
+    }
+
+    return results
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => ({ ...t }));
   }
 
+  /** Archives, for the same reason prompts do. */
   async deleteTemplate(name: string): Promise<void> {
-    this.templates.delete(name);
+    const existing = this.templates.get(name);
+    if (!existing) throw new Error(`Template ${name} not found`);
+    this.templates.set(name, { ...existing, projects: [ARCHIVE_PROJECT_ID] });
+  }
+
+  // Projects
+  async createProject(project: ProjectRecord): Promise<void> {
+    this.projects.set(project.id, { ...project });
+  }
+
+  async getProject(id: string): Promise<ProjectRecord | null> {
+    const project = this.projects.get(id);
+    return project ? { ...project } : null;
+  }
+
+  async updateProject(id: string, updates: Partial<ProjectRecord>): Promise<void> {
+    const existing = this.projects.get(id);
+    if (!existing) throw new Error(`Project ${id} not found`);
+    this.projects.set(id, { ...existing, ...updates });
+  }
+
+  async listProjects(): Promise<ProjectRecord[]> {
+    // Reserved first, then by name. General and Archive are the frame the rest
+    // hangs in, so they should not be sorted into the middle of it.
+    return Array.from(this.projects.values())
+      .sort((a, b) => {
+        if (a.is_reserved !== b.is_reserved) return a.is_reserved ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })
+      .map((p) => ({ ...p }));
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    this.projects.delete(id);
   }
 
   // Test helper
@@ -241,5 +305,6 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.tags.clear();
     this.constraints.clear();
     this.templates.clear();
+    this.projects.clear();
   }
 }

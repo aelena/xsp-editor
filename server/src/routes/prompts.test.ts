@@ -1,10 +1,15 @@
+import { createMemoryAuditLog } from "../services/audit.js";
+import {
+  ARCHIVE_PROJECT_ID,
+  GENERAL_PROJECT_ID,
+} from "../schemas/projects.js";
 import { describe, it, expect } from "vitest";
 import { buildApp } from "../index.js";
 import { MemoryStorageAdapter } from "../storage/memory.js";
 
 function createTestApp() {
   const storage = new MemoryStorageAdapter();
-  const app = buildApp(storage);
+  const app = buildApp(storage, createMemoryAuditLog());
   return { app, storage };
 }
 
@@ -45,7 +50,10 @@ describe("POST /api/v1/prompts", () => {
     expect(body.variables.customer_message.description).toBe(
       "The raw customer message",
     );
-    expect(body.deleted).toBe(false);
+    // A new prompt belongs to General, which is how the system spells "no
+    // project". It replaced a `deleted: false` flag, which was the same idea
+    // reached from the other direction.
+    expect(body.projects).toEqual([GENERAL_PROJECT_ID]);
     expect(body.verification_status).toBe("unchecked");
   });
 
@@ -334,7 +342,7 @@ describe("PUT /api/v1/prompts/:id", () => {
 });
 
 describe("DELETE /api/v1/prompts/:id", () => {
-  it("should soft-delete a prompt", async () => {
+  it("archives the prompt and says where it went", async () => {
     const { app } = createTestApp();
     const createRes = await app.inject({
       method: "POST",
@@ -348,17 +356,39 @@ describe("DELETE /api/v1/prompts/:id", () => {
       url: `/api/v1/prompts/${id}`,
     });
 
-    expect(deleteRes.statusCode).toBe(204);
+    // Not 204. Nothing was destroyed, and a bare no-content reply implies it
+    // was: the caller is told the prompt is in Archive.
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.json()).toEqual({
+      archived: true,
+      projects: [ARCHIVE_PROJECT_ID],
+    });
+  });
 
-    // Should no longer be retrievable
+  it("keeps an archived prompt retrievable", async () => {
+    // The old soft delete hid the prompt from GET as well, which made it a hard
+    // delete wearing a soft one's clothes: there was no way to view, restore or
+    // fork what had been removed. Archive is a place, so you can still look at
+    // what is in it.
+    const { app } = createTestApp();
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/prompts",
+      payload: samplePrompt,
+    });
+    const { id } = createRes.json();
+
+    await app.inject({ method: "DELETE", url: `/api/v1/prompts/${id}` });
+
     const getRes = await app.inject({
       method: "GET",
       url: `/api/v1/prompts/${id}`,
     });
-    expect(getRes.statusCode).toBe(404);
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().projects).toEqual([ARCHIVE_PROJECT_ID]);
   });
 
-  it("should not list deleted prompts", async () => {
+  it("should not list archived prompts", async () => {
     const { app } = createTestApp();
     const createRes = await app.inject({
       method: "POST",

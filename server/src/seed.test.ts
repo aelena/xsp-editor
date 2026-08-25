@@ -1,3 +1,4 @@
+import { createMemoryAuditLog } from "./services/audit.js";
 import { describe, it, expect } from "vitest";
 import { buildApp } from "./index.js";
 import { MemoryStorageAdapter } from "./storage/memory.js";
@@ -6,7 +7,7 @@ import { seedDefaults } from "./seed.js";
 async function seededApp() {
   const storage = new MemoryStorageAdapter();
   await seedDefaults(storage);
-  return { app: buildApp(storage), storage };
+  return { app: buildApp(storage, createMemoryAuditLog()), storage };
 }
 
 describe("seedDefaults", () => {

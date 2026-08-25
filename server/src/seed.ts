@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 import type { StorageAdapter } from "./storage/adapter.js";
 import type { TagRecord } from "./schemas/tags.js";
 import type { ConstraintRecord } from "./schemas/constraints.js";
+import {
+  GENERAL_PROJECT_ID,
+  reservedProjects,
+} from "./schemas/projects.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(__dirname, "templates");
@@ -593,6 +597,19 @@ const EXAMPLE_PROMPTS: Array<{
 ];
 
 export async function seedDefaults(storage: StorageAdapter): Promise<void> {
+  // The reserved projects come first, because everything seeded below has to
+  // belong to one and General is where it belongs.
+  //
+  // Created individually rather than behind an "are there any projects?" check:
+  // a store that somehow had a user project but not General would otherwise stay
+  // broken forever, and the invariant that both always exist is worth more than
+  // saving two lookups at startup.
+  for (const project of reservedProjects(new Date().toISOString())) {
+    if (!(await storage.getProject(project.id))) {
+      await storage.createProject(project);
+    }
+  }
+
   // Seed tags if none exist
   const existingTags = await storage.listTags();
   if (existingTags.total === 0) {
@@ -646,6 +663,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
             is_builtin: true,
             created_at: now,
             updated_at: now,
+            projects: [GENERAL_PROJECT_ID],
           });
           count++;
         }
@@ -673,7 +691,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
         verification_status: "unchecked",
         created_at: now,
         updated_at: now,
-        deleted: false,
+        projects: [GENERAL_PROJECT_ID],
       });
     }
     console.log(`Seeded ${EXAMPLE_PROMPTS.length} example prompts`);

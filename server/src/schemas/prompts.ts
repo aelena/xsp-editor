@@ -19,6 +19,8 @@ export const createPromptSchema = z.object({
   author: z.string().min(1).max(100).optional().default("anonymous"),
   variables: z.record(z.string(), variableDefinitionSchema).optional(),
   metadata: z.record(z.string(), z.string()).optional(),
+  /** Which project to create it in. Omitted means General. */
+  project_id: z.string().min(1).optional(),
 });
 
 export const updatePromptSchema = z.object({
@@ -43,6 +45,8 @@ export const listPromptsQuerySchema = z.object({
   search: z.string().optional(),
   author: z.string().optional(),
   tag: z.string().optional(),
+  project: z.string().optional(),
+  include_archived: z.coerce.boolean().optional(),
 });
 
 export interface PromptRecord {
@@ -59,7 +63,18 @@ export interface PromptRecord {
   updated_at: string;
   verification_status: "passed" | "warnings" | "failed" | "unchecked";
   metadata: Record<string, string>;
-  deleted: boolean;
+  /**
+   * The projects this prompt belongs to, by id. Never empty: `General` is how
+   * the system spells "no project".
+   *
+   * This replaced a `deleted: boolean` flag. The two were the same idea reached
+   * from different directions, since the flag was already a soft delete that
+   * `listPrompts` filtered out, and a hidden state with no way back and no
+   * record of who put it there is exactly what `Archive` exists to be instead.
+   */
+  projects: string[];
+  /** Immutable provenance, set once when this prompt was forked from another. */
+  forked_from?: { id: string; name: string; version: string };
 }
 
 export interface PromptVersionRecord {

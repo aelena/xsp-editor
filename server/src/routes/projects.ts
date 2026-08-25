@@ -4,30 +4,59 @@ import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve, dirname } from "node:path";
-import { createProjectSchema, updateProjectSchema, type ProjectRecord } from "../schemas/projects.js";
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  deleteProjectQuerySchema,
+  isReservedProjectId,
+  type ProjectRecord,
+} from "../schemas/projects.js";
 import { isGitRepo, gitInit, gitStatus, gitAdd, gitCommit, gitLog, gitDiff } from "../services/git.js";
+import type { StorageAdapter } from "../storage/adapter.js";
+import type { AuditLog } from "../services/audit.js";
+import { afterProjectDeleted, normalise } from "../services/membership.js";
+import { collectAll } from "../storage/collect.js";
 
-// In-memory project store (simple, no adapter needed)
-export const projects = new Map<string, ProjectRecord>();
+/** Git operations need a folder. A project that is only a grouping has none. */
+const NOT_A_WORKSPACE = "This project has no folder on disk";
 
-/** Check whether a given path is a registered project root. */
-export function isRegisteredProjectPath(projectPath: string): boolean {
-  for (const p of projects.values()) {
-    if (p.path === projectPath) return true;
-  }
-  return false;
-}
-
-export function registerProjectRoutes(app: FastifyInstance): void {
-  // List all projects
-  app.get("/api/v1/projects", async (_request, reply) => {
-    const list = Array.from(projects.values()).sort(
-      (a, b) => a.name.localeCompare(b.name),
+export function registerProjectRoutes(
+  app: FastifyInstance,
+  storage: StorageAdapter,
+  audit: AuditLog,
+): void {
+  /**
+   * Every member of a project, prompts and templates alike, so the callers that
+   * act on all of them do not each reimplement the pair of queries.
+   */
+  const membersOf = async (projectId: string) => {
+    const prompts = await collectAll((page, limit) =>
+      storage
+        .listPrompts({ page, limit, project: projectId, include_archived: true })
+        .then((r) => ({ items: r.prompts, total: r.total, page: r.page, limit: r.limit })),
     );
-    return reply.send({ projects: list });
+    const templates = await storage.listTemplates({
+      project: projectId,
+      include_archived: true,
+    });
+    return { prompts, templates };
+  };
+
+  /** The members that would be left with no project at all if this one went. */
+  const orphansOf = async (projectId: string) => {
+    const { prompts, templates } = await membersOf(projectId);
+    const orphaned = (projects: string[]) =>
+      normalise(projects).filter((p) => p !== projectId).length === 0;
+    return {
+      prompts: prompts.filter((p) => orphaned(p.projects)),
+      templates: templates.filter((t) => orphaned(t.projects)),
+    };
+  };
+
+  app.get("/api/v1/projects", async (_request, reply) => {
+    return reply.send({ projects: await storage.listProjects() });
   });
 
-  // Create a project
   app.post("/api/v1/projects", async (request, reply) => {
     const parseResult = createProjectSchema.safeParse(request.body);
     if (!parseResult.success) {
@@ -39,42 +68,89 @@ export function registerProjectRoutes(app: FastifyInstance): void {
 
     const { name, path } = parseResult.data;
 
-    if (!existsSync(path)) {
+    // A path is optional now, because a project can be nothing but a grouping.
+    // When one is given it still has to exist: a workspace pointing nowhere
+    // fails later and further from the cause.
+    if (path && !existsSync(path)) {
       return reply.status(400).send({ error: "Directory does not exist" });
     }
 
-    const now = new Date().toISOString();
-    const is_git = await isGitRepo(path);
+    const existing = await storage.listProjects();
+    if (existing.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      // Names are what the tree and the membership labels show, so two projects
+      // sharing one produces a UI that cannot be read.
+      return reply.status(409).send({ error: "A project with that name exists" });
+    }
 
+    const now = new Date().toISOString();
     const project: ProjectRecord = {
       id: uuidv4(),
       name,
-      path,
-      is_git_repo: is_git,
+      path: path ?? null,
+      is_git_repo: path ? await isGitRepo(path) : false,
+      is_reserved: false,
       created_at: now,
       updated_at: now,
     };
 
-    projects.set(project.id, project);
+    await storage.createProject(project);
     return reply.status(201).send(project);
   });
 
-  // Get a project
+  /**
+   * Every project with the prompts and templates hanging off it. One level:
+   * there are no sub-projects and no nesting.
+   *
+   * Built here rather than in the client, which would otherwise fetch every
+   * prompt and every template and regroup them on each render, which is the
+   * same work done further from the data.
+   *
+   * Registered before /:id so that "tree" is not read as a project id.
+   */
+  app.get("/api/v1/projects/tree", async (_request, reply) => {
+    const projects = await storage.listProjects();
+    const tree = [];
+
+    for (const project of projects) {
+      const { prompts, templates } = await membersOf(project.id);
+      tree.push({
+        project,
+        prompts: prompts.map((p) => ({
+          id: p.id,
+          name: p.name,
+          version: p.version,
+          verification_status: p.verification_status,
+        })),
+        templates: templates.map((t) => ({
+          name: t.name,
+          category: t.category,
+          is_builtin: t.is_builtin,
+        })),
+      });
+    }
+
+    return reply.send({ tree });
+  });
+
   app.get("/api/v1/projects/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
     }
     return reply.send(project);
   });
 
-  // Update a project
   app.put("/api/v1/projects/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const existing = projects.get(id);
+    const existing = await storage.getProject(id);
     if (!existing) {
       return reply.status(404).send({ error: "Project not found" });
+    }
+    if (existing.is_reserved) {
+      // General and Archive are part of the model, not user data. Renaming
+      // General leaves the UI explaining a concept by a name nothing else uses.
+      return reply.status(409).send({ error: "Reserved projects cannot be changed" });
     }
 
     const parseResult = updateProjectSchema.safeParse(request.body);
@@ -90,28 +166,116 @@ export function registerProjectRoutes(app: FastifyInstance): void {
       return reply.status(400).send({ error: "Directory does not exist" });
     }
 
-    const updatedPath = updates.path || existing.path;
-    const is_git = await isGitRepo(updatedPath);
-
+    const path = updates.path ?? existing.path;
     const updated: ProjectRecord = {
       ...existing,
       name: updates.name || existing.name,
-      path: updatedPath,
-      is_git_repo: is_git,
+      path,
+      is_git_repo: path ? await isGitRepo(path) : false,
       updated_at: new Date().toISOString(),
     };
 
-    projects.set(id, updated);
+    await storage.updateProject(id, updated);
     return reply.send(updated);
   });
 
-  // Delete a project
-  app.delete("/api/v1/projects/:id", async (request, reply) => {
+  /**
+   * How many members would be left with no project if this one were deleted.
+   *
+   * The confirmation dialog needs this number before it can ask a sensible
+   * question. When it is zero the question does not need asking, and when it is
+   * not, "four of nine prompts have no other project" is a choice someone can
+   * actually make.
+   */
+  app.get("/api/v1/projects/:id/orphan-count", async (request, reply) => {
     const { id } = request.params as { id: string };
-    if (!projects.has(id)) {
+    const project = await storage.getProject(id);
+    if (!project) {
       return reply.status(404).send({ error: "Project not found" });
     }
-    projects.delete(id);
+
+    const orphans = await orphansOf(id);
+    const members = await membersOf(id);
+    return reply.send({
+      orphan_count: orphans.prompts.length + orphans.templates.length,
+      member_count: members.prompts.length + members.templates.length,
+    });
+  });
+
+  /**
+   * Delete a project, moving its members rather than destroying them.
+   *
+   * Each member loses exactly this one membership. A member with another home is
+   * otherwise untouched, which is the rule that makes "prompts move back to
+   * General" and "prompts in other projects are unaffected" both true at once.
+   * The `orphans` answer only reaches the members that would be left with
+   * nothing.
+   */
+  app.delete("/api/v1/projects/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const project = await storage.getProject(id);
+    if (!project) {
+      return reply.status(404).send({ error: "Project not found" });
+    }
+    if (isReservedProjectId(id) || project.is_reserved) {
+      return reply.status(409).send({ error: "Reserved projects cannot be deleted" });
+    }
+
+    const queryResult = deleteProjectQuerySchema.safeParse(request.query);
+    if (!queryResult.success) {
+      return reply.status(400).send({ error: "orphans must be archive or general" });
+    }
+    const { orphans } = queryResult.data;
+
+    const { prompts, templates } = await membersOf(id);
+    const orphaned = await orphansOf(id);
+    const orphanCount = orphaned.prompts.length + orphaned.templates.length;
+
+    if (!orphans && orphanCount > 0) {
+      // The server refuses to guess. Without this, a client that forgets a
+      // query parameter archives things silently.
+      return reply.status(409).send({
+        error: "Deleting this project would leave members with no project",
+        orphan_count: orphanCount,
+        requires: "orphans=archive|general",
+      });
+    }
+
+    const choice = orphans ?? "general";
+
+    for (const prompt of prompts) {
+      const before = normalise(prompt.projects);
+      const { after, archived } = afterProjectDeleted(before, id, choice);
+      await storage.updatePrompt(prompt.id, { projects: after });
+      await audit.record({
+        kind: "prompt",
+        artifact_id: prompt.id,
+        artifact_name: prompt.name,
+        operation: archived ? "archived" : "removed_from",
+        project: id,
+        before,
+        after,
+        detail: { project_name: project.name, reason: "project_deleted" },
+      });
+    }
+
+    for (const template of templates) {
+      const before = normalise(template.projects);
+      const { after, archived } = afterProjectDeleted(before, id, choice);
+      await storage.updateTemplate(template.name, { projects: after });
+      await audit.record({
+        kind: "template",
+        artifact_id: template.name,
+        artifact_name: template.name,
+        operation: archived ? "archived" : "removed_from",
+        project: id,
+        before,
+        after,
+        detail: { project_name: project.name, reason: "project_deleted" },
+      });
+    }
+
+    await storage.deleteProject(id);
     return reply.status(204).send();
   });
 
@@ -170,23 +334,28 @@ export function registerProjectRoutes(app: FastifyInstance): void {
   // Git: init repo
   app.post("/api/v1/projects/:id/git/init", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
     }
+    if (!project.path) {
+      return reply.status(400).send({ error: NOT_A_WORKSPACE });
+    }
 
     await gitInit(project.path);
-    project.is_git_repo = true;
-    projects.set(id, project);
+    await storage.updateProject(id, { is_git_repo: true });
     return reply.send({ message: "Git repository initialized" });
   });
 
   // Git: status
   app.get("/api/v1/projects/:id/git/status", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
+    }
+    if (!project.path) {
+      return reply.status(400).send({ error: NOT_A_WORKSPACE });
     }
     if (!project.is_git_repo) {
       return reply.status(400).send({ error: "Not a git repository" });
@@ -199,9 +368,12 @@ export function registerProjectRoutes(app: FastifyInstance): void {
   // Git: add + commit
   app.post("/api/v1/projects/:id/git/commit", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
+    }
+    if (!project.path) {
+      return reply.status(400).send({ error: NOT_A_WORKSPACE });
     }
     if (!project.is_git_repo) {
       return reply.status(400).send({ error: "Not a git repository" });
@@ -224,9 +396,12 @@ export function registerProjectRoutes(app: FastifyInstance): void {
   // Git: log
   app.get("/api/v1/projects/:id/git/log", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
+    }
+    if (!project.path) {
+      return reply.status(400).send({ error: NOT_A_WORKSPACE });
     }
     if (!project.is_git_repo) {
       return reply.status(400).send({ error: "Not a git repository" });
@@ -241,9 +416,12 @@ export function registerProjectRoutes(app: FastifyInstance): void {
   // Git: diff
   app.get("/api/v1/projects/:id/git/diff", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = projects.get(id);
+    const project = await storage.getProject(id);
     if (!project) {
       return reply.status(404).send({ error: "Project not found" });
+    }
+    if (!project.path) {
+      return reply.status(400).send({ error: NOT_A_WORKSPACE });
     }
     if (!project.is_git_repo) {
       return reply.status(400).send({ error: "Not a git repository" });

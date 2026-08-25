@@ -1,3 +1,4 @@
+import { createMemoryAuditLog } from "../services/audit.js";
 import { describe, it, expect } from "vitest";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
@@ -5,7 +6,7 @@ import { buildApp } from "../index.js";
 import { MemoryStorageAdapter } from "../storage/memory.js";
 
 function createTestApp() {
-  return buildApp(new MemoryStorageAdapter());
+  return buildApp(new MemoryStorageAdapter(), createMemoryAuditLog());
 }
 
 /** What the endpoint returns, as the client consumes it. */

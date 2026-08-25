@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { readdir, readFile, writeFile, mkdir, unlink, stat, rename } from "node:fs/promises";
 import { join, resolve, relative, extname, dirname } from "node:path";
 import { existsSync } from "node:fs";
-import { isRegisteredProjectPath } from "./projects.js";
+import type { StorageAdapter } from "../storage/adapter.js";
 
 interface FileEntry {
   name: string;
@@ -59,14 +59,30 @@ function resolveProjectPath(projectPath: string, filePath: string): string {
   return resolved;
 }
 
-export function registerFileRoutes(app: FastifyInstance): void {
+export function registerFileRoutes(
+  app: FastifyInstance,
+  storage: StorageAdapter,
+): void {
+  /**
+   * File contents stay restricted to registered workspaces. This is the boundary
+   * that matters: listing directory names is how you choose a folder in the
+   * first place, but reading and writing files inside one is not.
+   *
+   * Projects that are only a logical grouping have no path and therefore grant
+   * nothing here.
+   */
+  const isRegisteredProjectPath = async (projectPath: string) => {
+    const projects = await storage.listProjects();
+    return projects.some((p) => p.path !== null && p.path === projectPath);
+  };
+
   // List files in a project directory
   app.get("/api/v1/files", async (request, reply) => {
     const { projectPath } = request.query as { projectPath: string };
     if (!projectPath) {
       return reply.status(400).send({ error: "projectPath query param required" });
     }
-    if (!isRegisteredProjectPath(projectPath)) {
+    if (!(await isRegisteredProjectPath(projectPath))) {
       return reply.status(403).send({ error: "Project path is not registered" });
     }
     if (!existsSync(projectPath)) {
@@ -88,7 +104,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath and filePath query params required",
       });
     }
-    if (!isRegisteredProjectPath(projectPath)) {
+    if (!(await isRegisteredProjectPath(projectPath))) {
       return reply.status(403).send({ error: "Project path is not registered" });
     }
 
@@ -118,7 +134,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath and filePath query params required",
       });
     }
-    if (!isRegisteredProjectPath(projectPath)) {
+    if (!(await isRegisteredProjectPath(projectPath))) {
       return reply.status(403).send({ error: "Project path is not registered" });
     }
 
@@ -158,7 +174,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath and filePath query params required",
       });
     }
-    if (!isRegisteredProjectPath(projectPath)) {
+    if (!(await isRegisteredProjectPath(projectPath))) {
       return reply.status(403).send({ error: "Project path is not registered" });
     }
 
@@ -183,7 +199,7 @@ export function registerFileRoutes(app: FastifyInstance): void {
         error: "projectPath query param and oldPath/newPath body fields required",
       });
     }
-    if (!isRegisteredProjectPath(projectPath)) {
+    if (!(await isRegisteredProjectPath(projectPath))) {
       return reply.status(403).send({ error: "Project path is not registered" });
     }
 

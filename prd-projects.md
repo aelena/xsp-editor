@@ -72,10 +72,14 @@ history of things that no longer exist is an inventory of gaps.
 Joining `Archive` clears every other membership. An artifact that is retired but
 still listed under three live projects is not retired.
 
-The `archived` audit entry therefore records the memberships it cleared, because
-unarchiving cannot restore what it does not remember. Unarchiving puts the
-artifact in `General`; restoring the previous set from the record is a later
-feature the data already supports.
+The `archived` audit entry therefore records the memberships it cleared, in its
+`before` field, because unarchiving cannot restore what it does not remember.
+Not in a second field of its own: an earlier draft carried a `detail.cleared`
+alongside `before`, which the end-to-end walkthrough caught being written by the
+explicit archive endpoint and not by the project-deletion path. `before` is
+always there and always right. Unarchiving puts the artifact in `General`;
+restoring the previous set from the record is a later feature the data already
+supports.
 
 ---
 

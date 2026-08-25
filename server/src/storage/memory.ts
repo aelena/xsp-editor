@@ -11,7 +11,10 @@ import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
 import type { TemplateRecord } from "../schemas/templates.js";
 import type { ProjectRecord } from "../schemas/projects.js";
-import { ARCHIVE_PROJECT_ID } from "../schemas/projects.js";
+import {
+  ARCHIVE_PROJECT_ID,
+  GENERAL_PROJECT_ID,
+} from "../schemas/projects.js";
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private prompts = new Map<string, PromptRecord>();
@@ -284,13 +287,17 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async listProjects(): Promise<ProjectRecord[]> {
-    // Reserved first, then by name. General and Archive are the frame the rest
-    // hangs in, so they should not be sorted into the middle of it.
+    // General first, Archive last, everything else alphabetical between them.
+    //
+    // Sorting reserved-first and then by name is not enough: it puts Archive
+    // ahead of General, which reads as though retired things come before live
+    // ones. Every consumer gets the sensible order from here rather than each
+    // reimplementing it.
+    const rank = (p: ProjectRecord) =>
+      p.id === GENERAL_PROJECT_ID ? 0 : p.id === ARCHIVE_PROJECT_ID ? 2 : 1;
+
     return Array.from(this.projects.values())
-      .sort((a, b) => {
-        if (a.is_reserved !== b.is_reserved) return a.is_reserved ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      })
+      .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
       .map((p) => ({ ...p }));
   }
 

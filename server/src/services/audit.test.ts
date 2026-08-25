@@ -69,6 +69,21 @@ describe("createFileAuditLog", () => {
     expect((await readFile(path, "utf-8")).length).toBeGreaterThan(0);
   });
 
+  it("recovers when the directory disappears under it", async () => {
+    // Found by deleting data/ while a server was running: the mkdir used to be
+    // memoised, so every later append failed with ENOENT and the log stayed
+    // broken for the life of the process. An audit trail that gives up
+    // permanently because a folder moved fails when it is meant to be evidence.
+    const log = createFileAuditLog(path);
+    await log.record(entry({ operation: "created" }));
+    await rm(join(dir, "nested"), { recursive: true, force: true });
+
+    await log.record(entry({ operation: "archived" }));
+
+    const history = await log.read("p1");
+    expect(history.map((e) => e.operation)).toEqual(["archived"]);
+  });
+
   it("writes one JSON object per line", async () => {
     const log = createFileAuditLog(path);
     await log.record(entry({ operation: "created" }));

@@ -284,11 +284,11 @@ function register<T>(
       artifact_name: gw.name(record),
       operation: "archived",
       project: ARCHIVE_PROJECT_ID,
+      // `before` is the record of what archiving cleared, which is what makes
+      // restoring the previous memberships a later feature rather than a
+      // migration. It needs no second copy of itself in `detail`.
       before,
       after,
-      // The memberships archiving cleared, so unarchiving can restore them one
-      // day. Archive being exclusive means this is the only record of them.
-      detail: { cleared: before.join(",") },
     });
 
     return reply.send({ projects: after });

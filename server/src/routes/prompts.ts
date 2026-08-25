@@ -226,7 +226,7 @@ export function registerPromptRoutes(
       project: ARCHIVE_PROJECT_ID,
       before,
       after: [ARCHIVE_PROJECT_ID],
-      detail: { cleared: before.join(","), via: "DELETE" },
+      detail: { via: "DELETE" },
     });
     return reply.send({ archived: true, projects: [ARCHIVE_PROJECT_ID] });
   });

@@ -61,17 +61,25 @@ function stamp(entry: AuditInput): AuditEntry {
  * because rotating an audit trail means choosing what to forget.
  */
 export function createFileAuditLog(path: string): AuditLog {
-  let ready: Promise<void> | null = null;
-
-  const ensureDir = () => {
-    ready ??= mkdir(dirname(path), { recursive: true }).then(() => undefined);
-    return ready;
-  };
-
   return {
     async record(entry) {
-      await ensureDir();
-      await appendFile(path, JSON.stringify(stamp(entry)) + "\n", "utf-8");
+      const line = JSON.stringify(stamp(entry)) + "\n";
+      try {
+        await appendFile(path, line, "utf-8");
+      } catch (err) {
+        // Create the directory and try once more.
+        //
+        // This used to memoise the mkdir behind a flag, which meant that once
+        // the directory was gone the log stayed broken for the life of the
+        // process: every later append failed with ENOENT and the flag said
+        // there was nothing to do about it. An audit trail that gives up
+        // permanently because a folder moved fails at exactly the moment it is
+        // supposed to be evidence. Recovering costs one syscall on the first
+        // write and nothing after that.
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+        await mkdir(dirname(path), { recursive: true });
+        await appendFile(path, line, "utf-8");
+      }
     },
 
     async read(artifactId) {

@@ -98,12 +98,18 @@ describe("the reserved projects", () => {
     expect(res.statusCode).toBe(409);
   });
 
-  it("come before the user's projects in the listing", async () => {
+  it("bracket the user's projects: General first, Archive last", async () => {
+    // Sorting reserved-first and then by name put Archive ahead of General,
+    // which reads as though retired things come before live ones. The order is
+    // settled here rather than in each consumer, so the tree and the plain
+    // listing cannot disagree about it.
     await createProject("Aardvark");
+    await createProject("Zebra");
+
     const res = await app.inject({ method: "GET", url: "/api/v1/projects" });
-    const projects = res.json().projects as { name: string; is_reserved: boolean }[];
-    expect(projects[0].is_reserved).toBe(true);
-    expect(projects.at(-1)!.name).toBe("Aardvark");
+    const names = (res.json().projects as { name: string }[]).map((p) => p.name);
+
+    expect(names).toEqual(["General", "Aardvark", "Zebra", "Archive"]);
   });
 });
 
@@ -521,13 +527,36 @@ describe("the audit trail", () => {
   });
 
   it("records what archiving cleared, so it could be restored later", async () => {
+    // In `before`, not a separate field. The walkthrough caught a `detail.cleared`
+    // that only the explicit archive endpoint wrote, so anything reading it to
+    // answer "what did this belong to" got nothing when the archiving came from
+    // deleting a project. `before` is always there and always right.
     const a = await createProject("Alpha");
     const id = await createPrompt("audited");
     await addTo(id, a);
     await app.inject({ method: "POST", url: `/api/v1/prompts/${id}/archive` });
 
     const archived = (await audit.read(id)).find((e) => e.operation === "archived")!;
-    expect(archived.detail?.cleared).toContain(a);
+    expect(archived.before).toContain(a);
+    expect(archived.after).toEqual([ARCHIVE_PROJECT_ID]);
+  });
+
+  it("records the same way whichever path archived it", async () => {
+    const a = await createProject("Doomed");
+    const viaEndpoint = await createPrompt("via-endpoint", a);
+    const viaDeletion = await createPrompt("via-deletion", a);
+
+    await app.inject({ method: "POST", url: `/api/v1/prompts/${viaEndpoint}/archive` });
+    await app.inject({
+      method: "DELETE",
+      url: `/api/v1/projects/${a}?orphans=archive`,
+    });
+
+    for (const id of [viaEndpoint, viaDeletion]) {
+      const archived = (await audit.read(id)).find((e) => e.operation === "archived")!;
+      expect(archived.before, `for ${id}`).toContain(a);
+      expect(archived.after, `for ${id}`).toEqual([ARCHIVE_PROJECT_ID]);
+    }
   });
 
   it("records two entries for a fork, one on each side", async () => {

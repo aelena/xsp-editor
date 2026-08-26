@@ -23,8 +23,38 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The credential to send, if there is one.
+ *
+ * The session token wins over the build-time variable: a signed-in user's token
+ * is the current truth, and VITE_API_AUTH_TOKEN is the older single-shared-key
+ * arrangement kept working for anyone already using it.
+ *
+ * Read from localStorage directly rather than imported from api/auth.ts, to
+ * keep the dependency pointing one way: auth builds on the fetch wrapper, not
+ * the other way round.
+ */
 function getApiKey(): string | undefined {
+  try {
+    const session = localStorage.getItem('xsp.session')
+    if (session) return session
+  } catch {
+    // Storage unavailable. Fall through to the build-time token.
+  }
   return import.meta.env.VITE_API_AUTH_TOKEN || undefined
+}
+
+/**
+ * Called when the server says a request was not authenticated.
+ *
+ * A callback rather than a redirect here, because this module has no idea what
+ * the UI looks like. AuthGate registers one that drops the token and shows the
+ * sign-in screen.
+ */
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler
 }
 
 export async function apiFetch<T>(
@@ -49,6 +79,11 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
+    if (response.status === 401) {
+      // An expired or revoked session looks exactly like this. Without it the
+      // UI shows an error on every panel instead of asking for a password.
+      onUnauthorized?.()
+    }
     throw new ApiError(
       response.status,
       body.error || `Request failed with status ${response.status}`,

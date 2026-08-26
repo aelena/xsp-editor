@@ -8,6 +8,7 @@ import ConstraintLibrary from './pages/ConstraintLibrary.tsx'
 import Templates from './pages/Templates.tsx'
 import Settings from './pages/Settings.tsx'
 import PromptPlayground from './pages/PromptPlayground.tsx'
+import { AuthGate } from './components/AuthGate.tsx'
 import { Projects } from './pages/Projects.tsx'
 import Welcome from './pages/Welcome.tsx'
 import Help from './pages/Help.tsx'
@@ -24,6 +25,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthGate>
       <BrowserRouter>
         <Routes>
           <Route path="/projects" element={<Projects />} />
@@ -41,6 +43,7 @@ function App() {
           <Route path="/" element={<Welcome />} />
         </Routes>
       </BrowserRouter>
+      </AuthGate>
     </QueryClientProvider>
   )
 }

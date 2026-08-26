@@ -9,6 +9,7 @@ import Templates from './pages/Templates.tsx'
 import Settings from './pages/Settings.tsx'
 import PromptPlayground from './pages/PromptPlayground.tsx'
 import { AuthGate } from './components/AuthGate.tsx'
+import { CommandPalette } from './components/CommandPalette.tsx'
 import { Labels } from './pages/Labels.tsx'
 import { Projects } from './pages/Projects.tsx'
 import Welcome from './pages/Welcome.tsx'
@@ -28,6 +29,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthGate>
       <BrowserRouter>
+        {/* Inside the router, because it navigates; outside Routes, so it is
+            reachable from every page. */}
+        <CommandPalette />
         <Routes>
           <Route path="/projects" element={<Projects />} />
           <Route path="/labels" element={<Labels />} />

@@ -7,7 +7,8 @@ prd.json
 # Local tool settings, and the OneDrive conflict copies it accumulates.
 .claude/
 
-# The audit trail is real data, not build output.
+# User data lives in the platform data directory now (XSP_DATA_DIR overrides it),
+# not next to the code. Kept ignored so an older checkout does not commit one.
 server/data/
 
 # CI writes this so the run can be checked for dropped test files.

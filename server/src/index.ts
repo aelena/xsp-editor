@@ -15,6 +15,7 @@ import { registerLLMRoutes } from "./routes/llm.js";
 import { registerMembershipRoutes } from "./routes/membership.js";
 import type { StorageAdapter } from "./storage/adapter.js";
 import { createFileAuditLog, type AuditLog } from "./services/audit.js";
+import { auditPath, loadConfig } from "./config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -23,8 +24,7 @@ export function buildApp(storage?: StorageAdapter, auditLog?: AuditLog) {
   const adapter = storage || new MemoryStorageAdapter();
   // Injectable so tests can keep the trail in memory. The default is a file
   // because, with an in-memory store, it is the only durable record there is.
-  const audit =
-    auditLog || createFileAuditLog(join(__dirname, "..", "data", "audit.jsonl"));
+  const audit = auditLog || createFileAuditLog(auditPath(loadConfig()));
 
   registerPromptRoutes(app, adapter, audit);
   registerTagRoutes(app, adapter);

@@ -14,6 +14,8 @@ import { registerRenderRoutes } from "./routes/render.js";
 import { registerLLMRoutes } from "./routes/llm.js";
 import { registerMembershipRoutes } from "./routes/membership.js";
 import { registerAuthRoutes, type AuthContext } from "./routes/auth.js";
+import { registerLabelRoutes } from "./routes/labels.js";
+import { MemoryLabelStore, SqliteLabelStore, type LabelStore } from "./storage/label-store.js";
 import { MemoryAuthStore, SqliteAuthStore } from "./storage/auth-store.js";
 import { SqliteStorageAdapter } from "./storage/sqlite.js";
 import type { StorageAdapter } from "./storage/adapter.js";
@@ -51,6 +53,13 @@ export function createStorage(config: AppConfig): {
  * process are useless, but so is the data they would have guarded, and pairing
  * them keeps "nothing here survives" a single, honest statement.
  */
+/** The label store that goes with this adapter, sharing its connection. */
+export function createLabelStore(adapter: StorageAdapter): LabelStore {
+  return adapter instanceof SqliteStorageAdapter
+    ? new SqliteLabelStore(adapter.database())
+    : new MemoryLabelStore();
+}
+
 export function createAuthStore(config: AppConfig, adapter: StorageAdapter): AuthContext {
   const store =
     adapter instanceof SqliteStorageAdapter
@@ -63,6 +72,7 @@ export function buildApp(
   storage?: StorageAdapter,
   auditLog?: AuditLog,
   auth?: AuthContext,
+  labelStore?: LabelStore,
 ) {
   const app = Fastify({ logger: true });
   // All injectable, so tests get a store, a trail and a gate that touch nothing.
@@ -72,6 +82,8 @@ export function buildApp(
   // buildApp are tests that are not about authentication. server.ts decides the
   // real answer from the configuration.
   const authContext: AuthContext = auth ?? { store: new MemoryAuthStore(), required: false };
+
+  const labels = labelStore ?? new MemoryLabelStore();
 
   // First, so the gate is in place before anything it guards.
   registerAuthRoutes(app, authContext);
@@ -83,6 +95,7 @@ export function buildApp(
   registerTemplateRoutes(app, adapter);
   registerProjectRoutes(app, adapter, audit);
   registerMembershipRoutes(app, adapter, audit);
+  registerLabelRoutes(app, adapter, labels, audit);
   registerFileRoutes(app, adapter);
   registerRenderRoutes(app);
   registerLLMRoutes(app);

@@ -29,7 +29,8 @@ export type MembershipOperation =
   | "archived"
   | "unarchived"
   | "forked_from"
-  | "forked_to";
+  | "forked_to"
+  | "labelled";
 
 export function normalise(projects: readonly string[] | undefined): string[] {
   // Deduplicated and sorted, so equality and audit lines are stable rather than

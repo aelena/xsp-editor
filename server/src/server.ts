@@ -1,12 +1,12 @@
 import { databasePath, isLoopbackHost, loadConfig } from "./config.js";
-import { buildApp, createAuthStore, createStorage } from "./index.js";
+import { buildApp, createAuthStore, createLabelStore, createStorage } from "./index.js";
 import { seedDefaults } from "./seed.js";
 
 async function main() {
   const config = loadConfig();
   const { adapter, audit } = createStorage(config);
   const auth = createAuthStore(config, adapter);
-  const app = buildApp(adapter, audit, auth);
+  const app = buildApp(adapter, audit, auth, createLabelStore(adapter));
 
   // Idempotent: it creates the reserved projects and the default vocabulary
   // only when they are missing, so a restart against an existing database adds

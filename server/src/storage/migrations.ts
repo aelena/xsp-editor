@@ -175,6 +175,31 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_sessions_expiry ON sessions(expires_at);
     `,
   },
+  {
+    id: 3,
+    name: "free-form labels",
+    up: `
+      -- Free-form labels on an artifact, in the Azure DevOps sense: arbitrary
+      -- strings with no rules, no reserved values and no vocabulary behind them.
+      --
+      -- Deliberately not the tags table. That one holds XML element names with a
+      -- purpose, a use_when and an enforcement level, and the verification engine
+      -- checks a prompt's body against it. Putting free text in there would mean
+      -- a label acquiring "required" enforcement failed every prompt in the store
+      -- for not containing a <draft> element. Same word, two jobs, two tables.
+      --
+      -- One row per artifact per label, like memberships, so counting how many
+      -- things carry a label and renaming one everywhere are both one statement.
+      CREATE TABLE labels (
+        artifact_kind  TEXT NOT NULL CHECK (artifact_kind IN ('prompt', 'template')),
+        artifact_key   TEXT NOT NULL,
+        label          TEXT NOT NULL,
+        PRIMARY KEY (artifact_kind, artifact_key, label)
+      );
+      -- The management view asks "who carries this label", so that is the index.
+      CREATE INDEX idx_labels_label ON labels(label COLLATE NOCASE);
+    `,
+  },
 ];
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ProjectLabels } from '../components/ProjectLabels.tsx'
+import { LabelEditor } from '../components/LabelEditor.tsx'
 import { useFork } from '../api/membership.ts'
 import {
   usePrompt,
@@ -400,7 +401,12 @@ export default function PromptEditor() {
               </span>
             )}
           </div>
-          {id && <ProjectLabels kind="prompts" artifactKey={id} />}
+          {id && (
+            <div className="space-y-1">
+              <ProjectLabels kind="prompts" artifactKey={id} />
+              <LabelEditor kind="prompts" artifactKey={id} />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isDirty && (

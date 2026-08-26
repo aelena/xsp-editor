@@ -88,8 +88,15 @@ export default function EditorToolbar({
           Projects
         </Link>
         <Link
+          to="/labels"
+          className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
+        >
+          Labels
+        </Link>
+        <Link
           to="/tags"
           className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
+          title="The XML element vocabulary that verification checks against"
         >
           Tags
         </Link>

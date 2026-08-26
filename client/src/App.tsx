@@ -9,6 +9,7 @@ import Templates from './pages/Templates.tsx'
 import Settings from './pages/Settings.tsx'
 import PromptPlayground from './pages/PromptPlayground.tsx'
 import { AuthGate } from './components/AuthGate.tsx'
+import { Labels } from './pages/Labels.tsx'
 import { Projects } from './pages/Projects.tsx'
 import Welcome from './pages/Welcome.tsx'
 import Help from './pages/Help.tsx'
@@ -29,6 +30,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/projects" element={<Projects />} />
+          <Route path="/labels" element={<Labels />} />
           <Route path="/prompts" element={<PromptList />} />
           <Route path="/prompts/new" element={<PromptEditor />} />
           <Route path="/prompts/:id/edit" element={<PromptEditor />} />

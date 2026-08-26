@@ -104,6 +104,10 @@ jobs:
 
       - run: npm run lint
 
+      # `tsc -b`, not `tsc --noEmit`. The client's root tsconfig has files:[] and
+      # only project references, so --noEmit checks zero files and exits clean.
+      # It did precisely that here for a while, passing green while the build a
+      # step later caught a real type error in a test file.
       - run: npm run typecheck
 
       # `tsc -b && vite build`, so this also proves it bundles.

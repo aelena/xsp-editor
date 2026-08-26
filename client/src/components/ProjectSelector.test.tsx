@@ -61,7 +61,7 @@ const BASE = { 'GET /projects': () => json({ projects: [project()] }) }
 function renderSelector(props: Partial<Parameters<typeof ProjectSelector>[0]> = {}) {
   return render(
     <ProjectSelector
-      currentProjectId={undefined}
+      currentProjectId={null}
       onSelectProject={props.onSelectProject ?? vi.fn()}
       {...props}
     />,

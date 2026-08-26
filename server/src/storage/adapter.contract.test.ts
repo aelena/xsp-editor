@@ -363,6 +363,63 @@ describe.each(ADAPTERS)("%s", (_name, create) => {
     });
   });
 
+  describe("updating does not take child rows with it", () => {
+    /**
+     * The contract suite missed this once, and it is worth saying why.
+     *
+     * The SQLite adapter used INSERT OR REPLACE for upserts. REPLACE deletes the
+     * conflicting row and inserts a new one, which fires ON DELETE CASCADE, so
+     * editing a template destroyed its whole version history and renaming a
+     * project silently emptied it of every member. The in-memory adapter has no
+     * cascades, so it was perfectly happy and the two disagreed in the direction
+     * that loses data.
+     *
+     * These assertions are on the interface, not on SQL, which is why they hold
+     * for both and why they would have caught it.
+     */
+
+    it("keeps a template's versions when the template is updated", async () => {
+      await storage.createTemplate(template());
+      await storage.saveTemplateVersion({
+        template_name: "basic", version: "1.0.0", content: "<task/>",
+        description: "d", category: "general", author: "a",
+        changelog_summary: "first", version_bump_type: "major", created_at: NOW,
+      });
+
+      await storage.updateTemplate("basic", { content: "<task>changed</task>" });
+
+      expect(await storage.listTemplateVersions("basic")).toHaveLength(1);
+    });
+
+    it("keeps a project's members when the project is renamed", async () => {
+      await storage.createPrompt(prompt({ projects: [ALPHA] }));
+
+      await storage.updateProject(ALPHA, { name: "Renamed" });
+
+      expect((await storage.getPrompt(prompt().id))?.projects).toEqual([ALPHA]);
+    });
+
+    it("keeps a prompt's versions when the prompt is updated", async () => {
+      const one = prompt();
+      await storage.createPrompt(one);
+      await storage.saveVersion({
+        prompt_id: one.id, version: "1.0.0", content: "x", author: "a",
+        changelog_summary: "first", version_bump_type: "major", created_at: NOW,
+      });
+
+      await storage.updatePrompt(one.id, { content: "changed" });
+
+      expect(await storage.listVersions(one.id)).toHaveLength(1);
+    });
+
+    it("keeps a template's labels-adjacent membership when it is updated", async () => {
+      await storage.createTemplate(template({ projects: [ALPHA] }));
+      await storage.updateTemplate("basic", { description: "new" });
+
+      expect((await storage.getTemplate("basic"))?.projects).toEqual([ALPHA]);
+    });
+  });
+
   describe("projects", () => {
     it("puts General first and Archive last", async () => {
       const names = (await storage.listProjects()).map((p) => p.name);

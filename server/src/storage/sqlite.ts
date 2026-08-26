@@ -411,8 +411,18 @@ export class SqliteStorageAdapter implements StorageAdapter {
   async createTag(tag: TagRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO tags (name, purpose, use_when, example, enforcement,
-           usage_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        // Nothing references tags today. Written as an upsert anyway, so that
+        // adding a foreign key later cannot quietly reintroduce the bug the two
+        // tables above had.
+        `INSERT INTO tags (name, purpose, use_when, example, enforcement,
+           usage_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(name) DO UPDATE SET
+           purpose = excluded.purpose,
+           use_when = excluded.use_when,
+           example = excluded.example,
+           enforcement = excluded.enforcement,
+           usage_count = excluded.usage_count,
+           updated_at = excluded.updated_at`,
       )
       .run(
         tag.name,
@@ -474,9 +484,18 @@ export class SqliteStorageAdapter implements StorageAdapter {
   async createConstraint(constraint: ConstraintRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO constraints (id, description, severity, category, owner,
+        `INSERT INTO constraints (id, description, severity, category, owner,
            status, xml_block, usage_count, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           description = excluded.description,
+           severity = excluded.severity,
+           category = excluded.category,
+           owner = excluded.owner,
+           status = excluded.status,
+           xml_block = excluded.xml_block,
+           usage_count = excluded.usage_count,
+           updated_at = excluded.updated_at`,
       )
       .run(
         constraint.id,
@@ -561,9 +580,20 @@ export class SqliteStorageAdapter implements StorageAdapter {
     this.transaction(() => {
       this.db
         .prepare(
-          `INSERT OR REPLACE INTO templates (name, description, content, category,
+          // Upsert, not REPLACE. REPLACE deletes the conflicting row and
+          // inserts a new one, which fires the ON DELETE CASCADE on
+          // template_versions and takes the entire history with it.
+          `INSERT INTO templates (name, description, content, category,
              version, is_builtin, created_at, updated_at, forked_from)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(name) DO UPDATE SET
+             description = excluded.description,
+             content = excluded.content,
+             category = excluded.category,
+             version = excluded.version,
+             is_builtin = excluded.is_builtin,
+             updated_at = excluded.updated_at,
+             forked_from = excluded.forked_from`,
         )
         .run(
           template.name,
@@ -691,8 +721,16 @@ export class SqliteStorageAdapter implements StorageAdapter {
   async createProject(project: ProjectRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO projects (id, name, path, is_git_repo, is_reserved,
-           created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        // Same reason as templates, and worse here: memberships cascade off
+        // projects, so a REPLACE meant renaming a project silently emptied it.
+        `INSERT INTO projects (id, name, path, is_git_repo, is_reserved,
+           created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           path = excluded.path,
+           is_git_repo = excluded.is_git_repo,
+           is_reserved = excluded.is_reserved,
+           updated_at = excluded.updated_at`,
       )
       .run(
         project.id,

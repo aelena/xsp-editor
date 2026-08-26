@@ -143,7 +143,10 @@ is for.
 
 ## Audit
 
-Append-only JSONL at `data/audit.jsonl`. One JSON object per line.
+Append-only, in an `audit` table in the same SQLite file as the data it
+describes, so a copied database carries its own history and there is no way to
+back up one without the other. The JSONL writer remains for the in-memory
+store, where it is the only durable record there is.
 
 ```json
 {
@@ -164,11 +167,31 @@ Four decisions in that shape:
 this?" without replaying the file, and a missing line becomes detectable: two
 consecutive entries for the same artifact whose `after` and `before` disagree.
 
-**Written after the state change, never before.** There is no transaction to join:
-the store is an in-memory `Map` and the trail is a file. Given that, a missing
-entry is the failure to prefer, because the before/after chain exposes it, while
-an entry for a change that did not happen is invisible. This is best effort until
-storage is a real database, and the note says so rather than implying otherwise.
+**Written after the state change, never before.** A missing entry is the failure
+to prefer, because the before/after chain exposes it, while an entry for a change
+that did not happen is invisible.
+
+The first draft of this note said the reason was that there was no transaction to
+join, the store being an in-memory `Map` and the trail a file, and that it would
+become atomic once storage was a real database. Storage is now SQLite and the
+trail is a table in the same file, and it is still written afterwards, so that
+promise needs correcting rather than quietly dropping.
+
+The reason it cannot be atomic is not the absence of a database. It is that the
+adapter holds one connection and the route handlers are async. Two concurrent
+handlers that each `BEGIN`, `await`, and `COMMIT` interleave, and the second
+`BEGIN` fails outright with *cannot start a transaction within a transaction*;
+this was tested rather than assumed. Wrapping an async route in a transaction on
+a shared connection is broken, not merely imperfect.
+
+The transactions that do exist are the adapter's own, and they are safe for a
+precise reason: every one of them wraps a callback with no `await` inside, so it
+runs to completion before any other request resumes.
+
+Making the pair atomic needs one of two things, and both are larger than they
+look: a connection per request, or a synchronous unit of work that the route
+hands the whole change to. Until then the trail is written immediately after the
+change, on the same connection, and the chain is what catches a gap.
 
 **`actor` is the literal string `local user`.** There is no authentication and no
 prompt/user relation. The trail answers what happened and when, not who, and

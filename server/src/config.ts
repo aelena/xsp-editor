@@ -1,11 +1,18 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+/**
+ * "sqlite" keeps data across restarts. "memory" throws it away, which is right
+ * for tests and for a throwaway demo and wrong for anything else.
+ */
+export type StorageKind = "sqlite" | "memory";
+
 export interface AppConfig {
   port: number;
   apiAuthToken?: string;
   /** Where this application's own data lives. Nothing is shared with anything else. */
   dataDir: string;
+  storage: StorageKind;
 }
 
 const APP_DIR_NAME = "xsp-editor";
@@ -44,7 +51,24 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     // pointed elsewhere is how you get a scratch copy without touching the real
     // one.
     dataDir: env.XSP_DATA_DIR || defaultDataDir(process.platform, env),
+    // Durable by default. An unrecognised value is a typo in someone's
+    // environment, and silently falling back to memory would answer it by
+    // losing their data, so it fails loudly instead.
+    storage: parseStorageKind(env.XSP_STORAGE),
   };
+}
+
+function parseStorageKind(value: string | undefined): StorageKind {
+  if (value === undefined || value === "") return "sqlite";
+  if (value === "sqlite" || value === "memory") return value;
+  throw new Error(
+    `XSP_STORAGE must be "sqlite" or "memory", not ${JSON.stringify(value)}.`,
+  );
+}
+
+/** Where the database file lives. */
+export function databasePath(config: AppConfig): string {
+  return join(config.dataDir, "xsp-editor.db");
 }
 
 /** Where the append-only audit trail is written. */

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
-import { defaultDataDir, loadConfig, auditPath } from "./config.js";
+import { defaultDataDir, loadConfig, auditPath, databasePath } from "./config.js";
 
 const HOME = join("/home", "someone");
 
@@ -56,6 +56,34 @@ describe("loadConfig", () => {
 
   it("reads the port from the environment", () => {
     expect(loadConfig({ PORT: "6100" }).port).toBe(6100);
+  });
+});
+
+describe("storage selection", () => {
+  it("is durable by default", async () => {
+    // The wrong default here loses someone's work, so it is not memory.
+    expect(loadConfig({}).storage).toBe("sqlite");
+  });
+
+  it("accepts memory when asked", () => {
+    expect(loadConfig({ XSP_STORAGE: "memory" }).storage).toBe("memory");
+  });
+
+  it("refuses a value it does not recognise", () => {
+    // A typo in an environment variable answered by silently using memory is a
+    // configuration mistake paid for with data.
+    expect(() => loadConfig({ XSP_STORAGE: "sqlight" })).toThrow(/XSP_STORAGE/);
+  });
+
+  it("treats an empty value as unset", () => {
+    expect(loadConfig({ XSP_STORAGE: "" }).storage).toBe("sqlite");
+  });
+});
+
+describe("databasePath", () => {
+  it("sits inside the data directory", () => {
+    const config = loadConfig({ XSP_DATA_DIR: "/tmp/scratch" });
+    expect(databasePath(config)).toBe(join("/tmp/scratch", "xsp-editor.db"));
   });
 });
 

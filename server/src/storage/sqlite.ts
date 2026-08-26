@@ -16,6 +16,7 @@ import type { TemplateRecord } from "../schemas/templates.js";
 import type { ProjectRecord } from "../schemas/projects.js";
 import { ARCHIVE_PROJECT_ID, GENERAL_PROJECT_ID } from "../schemas/projects.js";
 import { migrate, assertNotFromTheFuture } from "./migrations.js";
+import { LOCAL_ACTOR, type AuditEntry, type AuditInput, type AuditLog } from "../services/audit.js";
 
 /**
  * The durable adapter, on node:sqlite.
@@ -71,7 +72,20 @@ export class SqliteStorageAdapter implements StorageAdapter {
     this.db.close();
   }
 
-  /** Run a unit of work as one transaction, so a partial write cannot survive. */
+  /**
+   * Run a unit of work as one transaction, so a partial write cannot survive.
+   *
+   * The callback must be synchronous, and every caller in this file is. That is
+   * not a style preference: this adapter holds one connection, and two async
+   * callers that each BEGIN, await, and COMMIT will interleave and the second
+   * BEGIN throws "cannot start a transaction within a transaction". A callback
+   * with no awaits in it runs to completion before any other request resumes,
+   * which is what makes these safe.
+   *
+   * The same fact is why the audit trail is not written inside the same
+   * transaction as the change it records: that would span an async route
+   * handler. See services/audit.ts.
+   */
   transaction<T>(work: () => T): T {
     this.db.exec("BEGIN");
     try {
@@ -82,6 +96,60 @@ export class SqliteStorageAdapter implements StorageAdapter {
       this.db.exec("ROLLBACK");
       throw err;
     }
+  }
+
+  /**
+   * An audit log backed by this same database.
+   *
+   * Same connection and same file as the data, so the trail travels with what it
+   * describes: a copied database carries its own history, and a query can join
+   * the two. The JSONL file it replaces was durable but separate, which meant
+   * backing up one and not the other was possible and silent.
+   */
+  auditLog(): AuditLog {
+    const db = this.db;
+    return {
+      async record(entry: AuditInput): Promise<void> {
+        db.prepare(
+          `INSERT INTO audit (at, actor, kind, artifact_id, artifact_name,
+             operation, project, before_set, after_set, detail)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          new Date().toISOString(),
+          LOCAL_ACTOR,
+          entry.kind,
+          entry.artifact_id,
+          entry.artifact_name,
+          entry.operation,
+          entry.project ?? null,
+          JSON.stringify(entry.before ?? []),
+          JSON.stringify(entry.after ?? []),
+          entry.detail ? JSON.stringify(entry.detail) : null,
+        );
+      },
+
+      async read(artifactId: string): Promise<AuditEntry[]> {
+        // By seq, which is insertion order. Ordering by `at` would reorder
+        // entries written inside the same millisecond, and the before/after
+        // chain only reads correctly in the order things happened.
+        const rows = db
+          .prepare("SELECT * FROM audit WHERE artifact_id = ? ORDER BY seq ASC")
+          .all(artifactId) as Row[];
+
+        return rows.map((row) => ({
+          at: asText(row.at),
+          actor: asText(row.actor),
+          kind: asText(row.kind) as AuditEntry["kind"],
+          artifact_id: asText(row.artifact_id),
+          artifact_name: asText(row.artifact_name),
+          operation: asText(row.operation) as AuditEntry["operation"],
+          project: row.project == null ? null : String(row.project),
+          before: parseJson<string[]>(row.before_set, []),
+          after: parseJson<string[]>(row.after_set, []),
+          ...(row.detail ? { detail: parseJson<Record<string, string>>(row.detail, {}) } : {}),
+        }));
+      },
+    };
   }
 
   // --- Membership -----------------------------------------------------------

@@ -118,6 +118,41 @@ describe('PromptVersions', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load versions')
   })
 
+  it('compares the two most recent versions by default', async () => {
+    // The common case, so it should not need two clicks before showing anything.
+    mockApi({ [`/prompts/${ID}/versions`]: () => json(VERSIONS), [`/prompts/${ID}`]: () => json(PROMPT) })
+    render(<PromptVersions />, { wrapper: createWrapper() })
+
+    await screen.findByText('Tightened the output contract')
+    expect(screen.getByText(/v1\.0\.0.*v1\.2\.0/)).toBeInTheDocument()
+    expect(screen.getByText('<task>a</task>')).toBeInTheDocument()
+    expect(screen.getByText('<task>b</task>')).toBeInTheDocument()
+  })
+
+  it('lets either side be chosen, because the interesting pair is rarely adjacent', async () => {
+    // "What changed between what is in production and what I am about to ship"
+    // is the real question, and those two are usually not next to each other.
+    mockApi({ [`/prompts/${ID}/versions`]: () => json(VERSIONS), [`/prompts/${ID}`]: () => json(PROMPT) })
+    render(<PromptVersions />, { wrapper: createWrapper() })
+    await screen.findByText('Tightened the output contract')
+
+    expect(screen.getByRole('combobox', { name: /From/ })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /To/ })).toBeInTheDocument()
+  })
+
+  it('offers no comparison when there is only one version', async () => {
+    // Nothing to compare it against, and two identical dropdowns would invite
+    // the reader to try.
+    mockApi({
+      [`/prompts/${ID}/versions`]: () => json({ versions: [VERSIONS.versions[0]] }),
+      [`/prompts/${ID}`]: () => json(PROMPT),
+    })
+    render(<PromptVersions />, { wrapper: createWrapper() })
+
+    await screen.findByText('Initial version')
+    expect(screen.queryByText('Compare')).not.toBeInTheDocument()
+  })
+
   it('offers a way back to the prompt list', async () => {
     mockApi({ [`/prompts/${ID}/versions`]: () => json(VERSIONS), [`/prompts/${ID}`]: () => json(PROMPT) })
     render(<PromptVersions />, { wrapper: createWrapper() })

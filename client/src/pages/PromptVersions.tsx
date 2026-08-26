@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { VersionDiff } from '../components/VersionDiff.tsx'
 import { usePrompt, usePromptVersions } from '../api/prompts.ts'
 
 function formatDate(iso: string): string {
@@ -9,6 +11,25 @@ function formatDate(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/**
+ * Which two versions the reader has picked to compare.
+ *
+ * Two independent choices rather than "this one and the one before it", because
+ * the question people actually have is "what changed between the version in
+ * production and the one I am about to ship", and those are rarely adjacent.
+ */
+function useComparison(available: string[]) {
+  const [from, setFrom] = useState<string | null>(null)
+  const [to, setTo] = useState<string | null>(null)
+
+  // Default to the two most recent, which is the common case, but only once
+  // there are two to compare.
+  const effectiveFrom = from ?? (available.length > 1 ? available[available.length - 2] : null)
+  const effectiveTo = to ?? (available.length > 0 ? available[available.length - 1] : null)
+
+  return { from: effectiveFrom, to: effectiveTo, setFrom, setTo }
 }
 
 export default function PromptVersions() {
@@ -22,6 +43,11 @@ export default function PromptVersions() {
 
   const versions = versionsData?.versions ?? []
   const hasVersions = versions.length > 0
+  const comparison = useComparison(versions.map((v) => v.version))
+
+  const byVersion = new Map(versions.map((v) => [v.version, v]))
+  const fromVersion = comparison.from ? byVersion.get(comparison.from) : undefined
+  const toVersion = comparison.to ? byVersion.get(comparison.to) : undefined
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -127,6 +153,49 @@ export default function PromptVersions() {
                 </tbody>
               </table>
             </div>
+
+            {versions.length > 1 && fromVersion && toVersion && (
+              <section className="mt-8">
+                <div className="flex flex-wrap items-end gap-3 mb-3">
+                  <h2 className="text-sm font-semibold dark:text-gray-200">Compare</h2>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">
+                    From
+                    <select
+                      value={comparison.from ?? ''}
+                      onChange={(e) => comparison.setFrom(e.target.value)}
+                      className="ml-1 text-xs px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-100"
+                    >
+                      {versions.map((v) => (
+                        <option key={v.version} value={v.version}>
+                          v{v.version}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">
+                    To
+                    <select
+                      value={comparison.to ?? ''}
+                      onChange={(e) => comparison.setTo(e.target.value)}
+                      className="ml-1 text-xs px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-100"
+                    >
+                      {versions.map((v) => (
+                        <option key={v.version} value={v.version}>
+                          v{v.version}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <VersionDiff
+                  fromLabel={`v${fromVersion.version}`}
+                  fromText={fromVersion.content}
+                  toLabel={`v${toVersion.version}`}
+                  toText={toVersion.content}
+                />
+              </section>
+            )}
           </>
         )}
       </div>

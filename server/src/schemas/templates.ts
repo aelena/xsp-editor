@@ -6,6 +6,8 @@ export interface TemplateRecord {
   description: string;
   content: string;
   category: string;
+  /** Semantic, chosen by whoever saved it, exactly as a prompt's is. */
+  version: string;
   is_builtin: boolean;
   created_at: string;
   updated_at: string;
@@ -36,4 +38,22 @@ export const updateTemplateSchema = z.object({
   description: z.string().min(1).max(1000).optional(),
   content: z.string().min(1).max(50000).optional(),
   category: z.string().min(1).max(100).optional(),
+  // Same three choices a prompt gets. Patch by default, because most edits to a
+  // template are a wording fix and calling that a major version teaches people
+  // to ignore the number.
+  version_bump: z.enum(["major", "minor", "patch"]).optional().default("patch"),
+  changelog_summary: z.string().max(500).optional(),
+  author: z.string().min(1).max(100).optional(),
 });
+
+export interface TemplateVersionRecord {
+  template_name: string;
+  version: string;
+  content: string;
+  description: string;
+  category: string;
+  author: string;
+  changelog_summary: string;
+  version_bump_type: string;
+  created_at: string;
+}

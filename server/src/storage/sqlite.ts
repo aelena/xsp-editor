@@ -12,7 +12,7 @@ import type {
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
-import type { TemplateRecord } from "../schemas/templates.js";
+import type { TemplateRecord, TemplateVersionRecord } from "../schemas/templates.js";
 import type { ProjectRecord } from "../schemas/projects.js";
 import { ARCHIVE_PROJECT_ID, GENERAL_PROJECT_ID } from "../schemas/projects.js";
 import { migrate, assertNotFromTheFuture } from "./migrations.js";
@@ -548,6 +548,7 @@ export class SqliteStorageAdapter implements StorageAdapter {
       description: asText(row.description),
       content: asText(row.content),
       category: asText(row.category),
+      version: asText(row.version) || "1.0.0",
       is_builtin: asBool(row.is_builtin),
       created_at: asText(row.created_at),
       updated_at: asText(row.updated_at),
@@ -561,14 +562,15 @@ export class SqliteStorageAdapter implements StorageAdapter {
       this.db
         .prepare(
           `INSERT OR REPLACE INTO templates (name, description, content, category,
-             is_builtin, created_at, updated_at, forked_from)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             version, is_builtin, created_at, updated_at, forked_from)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           template.name,
           template.description,
           template.content,
           template.category,
+          template.version ?? "1.0.0",
           template.is_builtin ? 1 : 0,
           template.created_at,
           template.updated_at,
@@ -631,6 +633,45 @@ export class SqliteStorageAdapter implements StorageAdapter {
     const exists = this.db.prepare("SELECT 1 FROM templates WHERE name = ?").get(name);
     if (!exists) throw new Error(`Template ${name} not found`);
     this.transaction(() => this.setMemberships("template", name, [ARCHIVE_PROJECT_ID]));
+  }
+
+  async saveTemplateVersion(version: TemplateVersionRecord): Promise<void> {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO template_versions
+           (template_name, version, content, description, category, author,
+            changelog_summary, version_bump_type, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        version.template_name,
+        version.version,
+        version.content,
+        version.description,
+        version.category,
+        version.author,
+        version.changelog_summary,
+        version.version_bump_type,
+        version.created_at,
+      );
+  }
+
+  async getTemplateVersion(
+    name: string,
+    version: string,
+  ): Promise<TemplateVersionRecord | null> {
+    const row = this.db
+      .prepare("SELECT * FROM template_versions WHERE template_name = ? AND version = ?")
+      .get(name, version) as Row | undefined;
+    return row ? (row as unknown as TemplateVersionRecord) : null;
+  }
+
+  async listTemplateVersions(name: string): Promise<TemplateVersionRecord[]> {
+    // Insertion order, which is the order they happened. Sorting by the version
+    // string would put 1.10.0 before 1.9.0.
+    return this.db
+      .prepare("SELECT * FROM template_versions WHERE template_name = ? ORDER BY rowid ASC")
+      .all(name) as unknown as TemplateVersionRecord[];
   }
 
   // --- Projects -------------------------------------------------------------

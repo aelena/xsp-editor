@@ -661,6 +661,7 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
             content,
             category: meta.category,
             is_builtin: true,
+            version: "1.0.0",
             created_at: now,
             updated_at: now,
             projects: [GENERAL_PROJECT_ID],

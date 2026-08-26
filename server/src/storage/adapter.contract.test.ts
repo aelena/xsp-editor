@@ -53,6 +53,7 @@ function template(overrides: Partial<TemplateRecord> = {}): TemplateRecord {
     description: "A basic template",
     content: "<task></task>",
     category: "general",
+    version: "1.0.0",
     is_builtin: false,
     created_at: NOW,
     updated_at: NOW,

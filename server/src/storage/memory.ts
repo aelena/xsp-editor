@@ -9,7 +9,7 @@ import type {
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
-import type { TemplateRecord } from "../schemas/templates.js";
+import type { TemplateRecord, TemplateVersionRecord } from "../schemas/templates.js";
 import type { ProjectRecord } from "../schemas/projects.js";
 import {
   ARCHIVE_PROJECT_ID,
@@ -23,6 +23,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
   private constraints = new Map<string, ConstraintRecord>();
   private templates = new Map<string, TemplateRecord>();
   private projects = new Map<string, ProjectRecord>();
+  private templateVersions = new Map<string, TemplateVersionRecord[]>();
 
   async createPrompt(prompt: PromptRecord): Promise<void> {
     this.prompts.set(prompt.id, { ...prompt });
@@ -270,6 +271,28 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.templates.set(name, { ...existing, projects: [ARCHIVE_PROJECT_ID] });
   }
 
+  async saveTemplateVersion(version: TemplateVersionRecord): Promise<void> {
+    const existing = this.templateVersions.get(version.template_name) || [];
+    // Replace in place if the version is already there, so a repeated save does
+    // not produce two rows claiming to be the same version.
+    const at = existing.findIndex((v) => v.version === version.version);
+    if (at >= 0) existing[at] = { ...version };
+    else existing.push({ ...version });
+    this.templateVersions.set(version.template_name, existing);
+  }
+
+  async getTemplateVersion(
+    name: string,
+    version: string,
+  ): Promise<TemplateVersionRecord | null> {
+    const found = (this.templateVersions.get(name) || []).find((v) => v.version === version);
+    return found ? { ...found } : null;
+  }
+
+  async listTemplateVersions(name: string): Promise<TemplateVersionRecord[]> {
+    return (this.templateVersions.get(name) || []).map((v) => ({ ...v }));
+  }
+
   // Projects
   async createProject(project: ProjectRecord): Promise<void> {
     this.projects.set(project.id, { ...project });
@@ -313,5 +336,6 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.constraints.clear();
     this.templates.clear();
     this.projects.clear();
+    this.templateVersions.clear();
   }
 }

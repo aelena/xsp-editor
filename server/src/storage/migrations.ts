@@ -200,6 +200,35 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_labels_label ON labels(label COLLATE NOCASE);
     `,
   },
+  {
+    id: 4,
+    name: "template versions",
+    up: `
+      -- Templates get the same version history prompts already have. A template
+      -- is shared by definition, so an edit to one changes every prompt started
+      -- from it afterwards, and until now that edit was unrecoverable.
+      --
+      -- Its own table rather than a shared one keyed by artifact kind, because
+      -- the key differs: a prompt is a UUID and a template is its name, and one
+      -- column cannot carry a foreign key to both.
+      CREATE TABLE template_versions (
+        template_name      TEXT NOT NULL REFERENCES templates(name) ON DELETE CASCADE,
+        version            TEXT NOT NULL,
+        content            TEXT NOT NULL,
+        description        TEXT NOT NULL DEFAULT '',
+        category           TEXT NOT NULL DEFAULT 'general',
+        author             TEXT NOT NULL DEFAULT 'local user',
+        changelog_summary  TEXT NOT NULL DEFAULT '',
+        version_bump_type  TEXT NOT NULL,
+        created_at         TEXT NOT NULL,
+        PRIMARY KEY (template_name, version)
+      );
+
+      -- Templates had no version column at all. Existing rows start at 1.0.0,
+      -- which is true of them: it is the first version anyone can point at.
+      ALTER TABLE templates ADD COLUMN version TEXT NOT NULL DEFAULT '1.0.0';
+    `,
+  },
 ];
 
 /**

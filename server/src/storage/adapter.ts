@@ -1,7 +1,7 @@
 import type { PromptRecord, PromptVersionRecord } from "../schemas/prompts.js";
 import type { TagRecord } from "../schemas/tags.js";
 import type { ConstraintRecord } from "../schemas/constraints.js";
-import type { TemplateRecord } from "../schemas/templates.js";
+import type { TemplateRecord, TemplateVersionRecord } from "../schemas/templates.js";
 import type { ProjectRecord } from "../schemas/projects.js";
 
 export interface ListConstraintsOptions {
@@ -105,4 +105,11 @@ export interface StorageAdapter {
   /** `project` filters by membership; templates are otherwise all returned. */
   listTemplates(options?: { project?: string; include_archived?: boolean }): Promise<TemplateRecord[]>;
   deleteTemplate(name: string): Promise<void>;
+
+  // Template versions, the same shape prompts have. A template is shared by
+  // definition, so an edit to one changes every prompt started from it
+  // afterwards, and that edit should be recoverable.
+  saveTemplateVersion(version: TemplateVersionRecord): Promise<void>;
+  getTemplateVersion(name: string, version: string): Promise<TemplateVersionRecord | null>;
+  listTemplateVersions(name: string): Promise<TemplateVersionRecord[]>;
 }

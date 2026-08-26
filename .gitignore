@@ -13,3 +13,6 @@ server/data/
 
 # CI writes this so the run can be checked for dropped test files.
 vitest-results.json
+
+# Coverage reports are build output; the threshold lives in vitest.config.ts.
+coverage/

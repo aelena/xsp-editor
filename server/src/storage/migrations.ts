@@ -150,8 +150,7 @@ export const MIGRATIONS: Migration[] = [
  * records it, so a failure halfway leaves the database at the last version that
  * fully applied rather than in a state no version describes.
  */
-export function migrate(db: DatabaseSync): { from: number; to: number; applied: string[] } {
-  db.exec("PRAGMA foreign_keys = ON");
+export function ensureVersionTable(db: DatabaseSync): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_version (
       id          INTEGER PRIMARY KEY,
@@ -159,6 +158,11 @@ export function migrate(db: DatabaseSync): { from: number; to: number; applied: 
       applied_at  TEXT NOT NULL
     )
   `);
+}
+
+export function migrate(db: DatabaseSync): { from: number; to: number; applied: string[] } {
+  db.exec("PRAGMA foreign_keys = ON");
+  ensureVersionTable(db);
 
   const row = db.prepare("SELECT MAX(id) AS current FROM schema_version").get() as {
     current: number | null;
@@ -199,6 +203,12 @@ export function migrate(db: DatabaseSync): { from: number; to: number; applied: 
  * storing. Downgrading should be an error message, not data loss.
  */
 export function assertNotFromTheFuture(db: DatabaseSync): void {
+  // A database that has never been migrated is at version 0, which is behind
+  // rather than ahead. Creating the table here means the check works on a fresh
+  // file instead of failing with "no such table", which is how the contract
+  // suite found this.
+  ensureVersionTable(db);
+
   const row = db.prepare("SELECT MAX(id) AS current FROM schema_version").get() as {
     current: number | null;
   };

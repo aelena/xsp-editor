@@ -66,8 +66,10 @@ jobs:
       - run: npm run build
 
       # Both reporters: the default one for a human reading the log, the JSON one
-      # for the check below.
-      - run: npm test -- --reporter=default --reporter=json --outputFile=vitest-results.json
+      # for the check below. --coverage enforces the thresholds in
+      # vitest.config.ts, which is a floor against coverage quietly falling
+      # rather than a target to chase.
+      - run: npm test -- --coverage --reporter=default --reporter=json --outputFile=vitest-results.json
 
       # A green suite that quietly ran twelve of thirteen files is worse than a
       # red one. This was not hypothetical: three consecutive runs in a container
@@ -108,8 +110,10 @@ jobs:
       - run: npm run build
 
       # Both reporters: the default one for a human reading the log, the JSON one
-      # for the check below.
-      - run: npm test -- --reporter=default --reporter=json --outputFile=vitest-results.json
+      # for the check below. --coverage enforces the thresholds in
+      # vitest.config.ts, which is a floor against coverage quietly falling
+      # rather than a target to chase.
+      - run: npm test -- --coverage --reporter=default --reporter=json --outputFile=vitest-results.json
 
       # A green suite that quietly ran twelve of thirteen files is worse than a
       # red one. This was not hypothetical: three consecutive runs in a container

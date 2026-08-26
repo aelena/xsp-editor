@@ -165,9 +165,14 @@ export default function ProjectSelector({
                   >
                     Use this folder
                   </button>
+                  {/* Named explicitly. The "+ Add" toggle also reads "Cancel"
+                      while the form is open, so two buttons on screen at once
+                      said the same word for two different retreats: abandoning
+                      the project, and abandoning the folder choice. */}
                   <button
                     type="button"
                     onClick={() => setBrowsePath(undefined)}
+                    aria-label="Cancel choosing a folder"
                     className="px-2 py-0.5 border border-gray-300 dark:border-gray-600 rounded dark:text-gray-300"
                   >
                     Cancel

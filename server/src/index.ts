@@ -13,6 +13,8 @@ import { registerTemplateRoutes } from "./routes/templates.js";
 import { registerRenderRoutes } from "./routes/render.js";
 import { registerLLMRoutes } from "./routes/llm.js";
 import { registerMembershipRoutes } from "./routes/membership.js";
+import { registerAuthRoutes, type AuthContext } from "./routes/auth.js";
+import { MemoryAuthStore, SqliteAuthStore } from "./storage/auth-store.js";
 import { SqliteStorageAdapter } from "./storage/sqlite.js";
 import type { StorageAdapter } from "./storage/adapter.js";
 import { createFileAuditLog, type AuditLog } from "./services/audit.js";
@@ -42,11 +44,37 @@ export function createStorage(config: AppConfig): {
   return { adapter, audit: adapter.auditLog() };
 }
 
-export function buildApp(storage?: StorageAdapter, auditLog?: AuditLog) {
+/**
+ * The user and session store that goes with this configuration.
+ *
+ * Memory storage gets a memory auth store: accounts that vanish with the
+ * process are useless, but so is the data they would have guarded, and pairing
+ * them keeps "nothing here survives" a single, honest statement.
+ */
+export function createAuthStore(config: AppConfig, adapter: StorageAdapter): AuthContext {
+  const store =
+    adapter instanceof SqliteStorageAdapter
+      ? new SqliteAuthStore(adapter.database())
+      : new MemoryAuthStore();
+  return { store, required: config.authRequired };
+}
+
+export function buildApp(
+  storage?: StorageAdapter,
+  auditLog?: AuditLog,
+  auth?: AuthContext,
+) {
   const app = Fastify({ logger: true });
-  // Both injectable, so tests get a store and a trail that touch nothing.
+  // All injectable, so tests get a store, a trail and a gate that touch nothing.
   const adapter = storage || new MemoryStorageAdapter();
   const audit = auditLog || createFileAuditLog(auditPath(loadConfig()));
+  // Open by default here, because the overwhelming majority of callers of
+  // buildApp are tests that are not about authentication. server.ts decides the
+  // real answer from the configuration.
+  const authContext: AuthContext = auth ?? { store: new MemoryAuthStore(), required: false };
+
+  // First, so the gate is in place before anything it guards.
+  registerAuthRoutes(app, authContext);
 
   registerPromptRoutes(app, adapter, audit);
   registerTagRoutes(app, adapter);

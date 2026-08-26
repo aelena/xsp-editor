@@ -141,6 +141,40 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_audit_artifact ON audit(artifact_id, seq);
     `,
   },
+  {
+    id: 2,
+    name: "users and sessions",
+    up: `
+      CREATE TABLE users (
+        id             TEXT PRIMARY KEY,
+        username       TEXT NOT NULL,
+        display_name   TEXT NOT NULL DEFAULT '',
+        -- The full scrypt encoding, parameters included, so a future change to
+        -- the cost can be rolled out per user on their next login instead of
+        -- invalidating everyone's password at once.
+        password_hash  TEXT NOT NULL,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      );
+      CREATE UNIQUE INDEX idx_users_username ON users(username COLLATE NOCASE);
+
+      -- Opaque server-side sessions rather than a self-contained token, because
+      -- a token you cannot invalidate is a token you cannot take back. Deleting
+      -- the row ends the session.
+      --
+      -- token_hash, not the token: a database that leaks should not also hand
+      -- over every live session. SHA-256 rather than scrypt is right here, since
+      -- these are 256 bits of randomness and not a guessable secret.
+      CREATE TABLE sessions (
+        token_hash  TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at  TEXT NOT NULL,
+        expires_at  TEXT NOT NULL
+      );
+      CREATE INDEX idx_sessions_user ON sessions(user_id);
+      CREATE INDEX idx_sessions_expiry ON sessions(expires_at);
+    `,
+  },
 ];
 
 /**

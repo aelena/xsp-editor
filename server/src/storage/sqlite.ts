@@ -73,6 +73,18 @@ export class SqliteStorageAdapter implements StorageAdapter {
   }
 
   /**
+   * The connection, for the auth store.
+   *
+   * Shared on purpose: users and sessions belong in the same file as everything
+   * else, so a copied database is a complete one. Exposed rather than folding
+   * six auth methods into StorageAdapter, which would make every future backend
+   * implement both concerns to provide either.
+   */
+  database(): DatabaseSync {
+    return this.db;
+  }
+
+  /**
    * Run a unit of work as one transaction, so a partial write cannot survive.
    *
    * The callback must be synchronous, and every caller in this file is. That is

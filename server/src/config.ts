@@ -13,6 +13,21 @@ export interface AppConfig {
   /** Where this application's own data lives. Nothing is shared with anything else. */
   dataDir: string;
   storage: StorageKind;
+  host: string;
+  /** Whether a session is needed to reach the API. */
+  authRequired: boolean;
+}
+
+/**
+ * Whether an address only accepts connections from this machine.
+ *
+ * This decides the auth default, so it errs towards treating an address as
+ * reachable: anything not recognisably local counts as exposed.
+ */
+export function isLoopbackHost(host: string): boolean {
+  const bare = host.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  if (bare === "localhost" || bare === "::1") return true;
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(bare);
 }
 
 const APP_DIR_NAME = "xsp-editor";
@@ -43,6 +58,7 @@ export function defaultDataDir(
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  const host = env.HOST || "127.0.0.1";
   return {
     port: parseInt(env.PORT || "5999", 10),
     apiAuthToken: env.API_AUTH_TOKEN,
@@ -55,7 +71,33 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     // environment, and silently falling back to memory would answer it by
     // losing their data, so it fails loudly instead.
     storage: parseStorageKind(env.XSP_STORAGE),
+    host,
+    authRequired: parseAuth(env.XSP_AUTH, host),
   };
+}
+
+/**
+ * Authentication is required by default as soon as the server is reachable from
+ * off this machine, and off by default when it is not.
+ *
+ * The alternative defaults are both bad. Always on means a login screen between
+ * one person and their own local tool, which is friction with nothing behind it
+ * given the API is already only answering to 127.0.0.1. Always off means the
+ * moment somebody sets HOST to reach it from a laptop, an unauthenticated API
+ * that reads and writes files goes on the network.
+ *
+ * XSP_AUTH=on turns it on for a local instance too, which is what a shared
+ * machine wants. XSP_AUTH=off turns it off anywhere, including where it should
+ * not be; that is the user's call to make, and server.ts says so loudly when
+ * they make it.
+ */
+function parseAuth(value: string | undefined, host: string): boolean {
+  if (value === "on") return true;
+  if (value === "off") return false;
+  if (value !== undefined && value !== "") {
+    throw new Error(`XSP_AUTH must be "on" or "off", not ${JSON.stringify(value)}.`);
+  }
+  return !isLoopbackHost(host);
 }
 
 function parseStorageKind(value: string | undefined): StorageKind {

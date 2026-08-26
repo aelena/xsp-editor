@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
-import { defaultDataDir, loadConfig, auditPath, databasePath } from "./config.js";
+import {
+  defaultDataDir,
+  loadConfig,
+  auditPath,
+  databasePath,
+  isLoopbackHost,
+} from "./config.js";
 
 const HOME = join("/home", "someone");
 
@@ -91,5 +97,54 @@ describe("auditPath", () => {
   it("sits inside the data directory", () => {
     const config = loadConfig({ XSP_DATA_DIR: "/tmp/scratch" });
     expect(auditPath(config)).toBe(join("/tmp/scratch", "audit.jsonl"));
+  });
+});
+
+describe("isLoopbackHost", () => {
+  it("recognises the local addresses", () => {
+    for (const host of ["127.0.0.1", "127.1.2.3", "localhost", "LOCALHOST", "::1", "[::1]", " 127.0.0.1 "]) {
+      expect(isLoopbackHost(host), host).toBe(true);
+    }
+  });
+
+  it("treats everything else as reachable", () => {
+    // It errs this way on purpose: this decides whether authentication is on by
+    // default, and a wrong guess towards "local" puts an open API on a network.
+    for (const host of ["0.0.0.0", "192.168.1.50", "::", "example.com", "10.0.0.1", ""]) {
+      expect(isLoopbackHost(host), host).toBe(false);
+    }
+  });
+
+  it("does not fall for a hostname that merely starts with 127", () => {
+    expect(isLoopbackHost("127.0.0.1.evil.com")).toBe(false);
+  });
+});
+
+describe("when authentication is required", () => {
+  it("is off for a server only this machine can reach", () => {
+    // A login screen between one person and their own local tool is friction
+    // with nothing behind it.
+    expect(loadConfig({}).authRequired).toBe(false);
+    expect(loadConfig({ HOST: "127.0.0.1" }).authRequired).toBe(false);
+  });
+
+  it("is on as soon as the server is reachable from elsewhere", () => {
+    // The moment someone sets HOST to reach it from a laptop, an API that reads
+    // and writes local files would otherwise go on the network unauthenticated.
+    expect(loadConfig({ HOST: "0.0.0.0" }).authRequired).toBe(true);
+    expect(loadConfig({ HOST: "192.168.1.50" }).authRequired).toBe(true);
+  });
+
+  it("can be turned on for a local instance", () => {
+    expect(loadConfig({ XSP_AUTH: "on" }).authRequired).toBe(true);
+  });
+
+  it("can be turned off even where it should not be", () => {
+    // The user's call to make. server.ts says loudly what they have done.
+    expect(loadConfig({ HOST: "0.0.0.0", XSP_AUTH: "off" }).authRequired).toBe(false);
+  });
+
+  it("refuses a value it does not recognise", () => {
+    expect(() => loadConfig({ XSP_AUTH: "yes" })).toThrow(/XSP_AUTH/);
   });
 });

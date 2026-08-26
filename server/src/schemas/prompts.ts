@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { booleanQuery } from "./query.js";
 
 export const variableDefinitionSchema = z.object({
   description: z.string(),
@@ -46,7 +47,7 @@ export const listPromptsQuerySchema = z.object({
   author: z.string().optional(),
   tag: z.string().optional(),
   project: z.string().optional(),
-  include_archived: z.coerce.boolean().optional(),
+  include_archived: booleanQuery,
 });
 
 export interface PromptRecord {

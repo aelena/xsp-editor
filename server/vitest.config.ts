@@ -23,5 +23,34 @@ export default defineConfig({
      */
     testTimeout: 30_000,
     hookTimeout: 30_000,
+
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary"],
+      include: ["src/**/*.ts"],
+      exclude: [
+        "src/**/*.test.ts",
+        // The process entry point. Covering it means starting a real server and
+        // binding a port from a unit test, which buys a number and no confidence.
+        "src/server.ts",
+        // Interfaces and types. They compile to nothing, so v8 reports them as
+        // zero per cent of nothing, which drags the figure down while saying
+        // nothing about what is tested.
+        "src/storage/adapter.ts",
+      ],
+      /**
+       * A floor, not a target.
+       *
+       * Set just under where the suite actually sits, so it catches a real drop
+       * without failing on the ordinary noise of adding a branch. Raise it when
+       * the real number moves up; never lower it to make a build pass.
+       */
+      thresholds: {
+        statements: 85,
+        branches: 82,
+        functions: 85,
+        lines: 85,
+      },
+    },
   },
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { booleanQuery } from "./query.js";
 
 export interface TemplateRecord {
   name: string;
@@ -28,7 +29,7 @@ export const createTemplateSchema = z.object({
 
 export const listTemplatesQuerySchema = z.object({
   project: z.string().optional(),
-  include_archived: z.coerce.boolean().optional(),
+  include_archived: booleanQuery,
 });
 
 export const updateTemplateSchema = z.object({

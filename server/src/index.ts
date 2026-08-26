@@ -15,6 +15,7 @@ import { registerLLMRoutes } from "./routes/llm.js";
 import { registerMembershipRoutes } from "./routes/membership.js";
 import { registerAuthRoutes, type AuthContext } from "./routes/auth.js";
 import { registerLabelRoutes } from "./routes/labels.js";
+import { registerBundleRoutes } from "./routes/bundle.js";
 import { MemoryLabelStore, SqliteLabelStore, type LabelStore } from "./storage/label-store.js";
 import { MemoryAuthStore, SqliteAuthStore } from "./storage/auth-store.js";
 import { SqliteStorageAdapter } from "./storage/sqlite.js";
@@ -96,6 +97,7 @@ export function buildApp(
   registerProjectRoutes(app, adapter, audit);
   registerMembershipRoutes(app, adapter, audit);
   registerLabelRoutes(app, adapter, labels, audit);
+  registerBundleRoutes(app, adapter, labels, audit);
   registerFileRoutes(app, adapter);
   registerRenderRoutes(app);
   registerLLMRoutes(app);

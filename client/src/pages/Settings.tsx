@@ -1,3 +1,4 @@
+import { BundlePanel } from '../components/BundlePanel.tsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -259,6 +260,12 @@ function SettingsForm({ config }: { config: LLMConfig }) {
               <span className="text-sm text-red-600">Connection failed</span>
             )}
           </div>
+        </div>
+
+        {/* Backup and sharing sit here because this is where someone looks for
+            "how do I get my data out", not on a page of its own they never find. */}
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <BundlePanel />
         </div>
       </main>
     </div>

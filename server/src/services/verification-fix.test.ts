@@ -152,6 +152,20 @@ describe("applyVerificationFix", () => {
     ).toThrowError(/does not support/);
   });
 
+  it("leaves the input of a few-shot example untouched", () => {
+    // The checker no longer complains about these, so the fix must not rewrite
+    // them either. Wrapping a demonstration in CDATA is noise, and it teaches
+    // the opposite of what CDATA is for.
+    const content = `
+<input>$user_input</input>
+<examples>
+  <example><input>$example_input</input></example>
+</examples>`;
+    const fixed = fixCdataForInput(content);
+    expect(fixed).toContain("<input><![CDATA[$user_input]]></input>");
+    expect(fixed).toContain("<example><input>$example_input</input></example>");
+  });
+
   it("throws for variable_docs with no variables to work on", () => {
     // Falling through to the throw is correct here, but worth pinning: the
     // caller must pass the current variables, and silently returning an empty

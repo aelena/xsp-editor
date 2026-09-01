@@ -47,10 +47,41 @@ export function fixEmptySections(content: string): string {
   return outsideCdata(content, (chunk) => chunk.replace(emptyTagRegex, ""));
 }
 
+const EXAMPLE_BLOCK = /<(examples|example)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
+
+/**
+ * Apply a transformation everywhere except inside few-shot example blocks.
+ *
+ * Mirrors outsideCdata above, for the same reason in a different place. The
+ * <input> of an <example> is a demonstration the author wrote, not runtime
+ * input from anybody, so the rules for untrusted data do not apply to it and
+ * rewriting it is noise at best. The checker skips these blocks too.
+ */
+function outsideExamples(
+  content: string,
+  transform: (chunk: string) => string,
+): string {
+  let out = "";
+  let cursor = 0;
+
+  EXAMPLE_BLOCK.lastIndex = 0;
+  let match;
+  while ((match = EXAMPLE_BLOCK.exec(content)) !== null) {
+    out += transform(content.slice(cursor, match.index));
+    out += match[0];
+    cursor = match.index + match[0].length;
+  }
+  return out + transform(content.slice(cursor));
+}
+
 /**
  * Wrap content of <input> and <untrusted_input> in CDATA if not already.
  */
 export function fixCdataForInput(content: string): string {
+  return outsideExamples(content, wrapInputsInCdata);
+}
+
+function wrapInputsInCdata(content: string): string {
   const inputRegex = /<(input|untrusted_input)([^>]*)>([\s\S]*?)<\/\1>/gi;
   return content.replace(inputRegex, (_, tagName, attrs, inner) => {
     const trimmed = inner.trim();

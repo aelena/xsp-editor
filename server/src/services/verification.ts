@@ -234,13 +234,32 @@ export function checkVariableDocs(content: string, context: VerificationContext)
 
 // --- Phase 1 Additional Rules ---
 
+/**
+ * Blank out few-shot example blocks, preserving the length of what is removed.
+ *
+ * An <input> inside <example> is authored demonstration content, not runtime
+ * input from anybody, so the rules about untrusted data do not apply to it.
+ * Without this exclusion the CDATA rule warned about every few-shot template in
+ * the book, including the ones this editor ships, and the auto-fix then wrapped
+ * a demonstration in CDATA and told the reader that is what CDATA is for.
+ *
+ * The span is replaced by spaces rather than deleted so that any position a
+ * caller reports still refers to the same place in the original text.
+ */
+const EXAMPLE_BLOCK = /<(examples|example)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
+
+export function withoutExampleBlocks(content: string): string {
+  return content.replace(EXAMPLE_BLOCK, (block) => " ".repeat(block.length));
+}
+
 export function checkCdataForInput(content: string): CheckResult {
   // Check if <input> or <untrusted_input> tags use CDATA wrappers
   const inputRegex = /<(input|untrusted_input)[^>]*>([\s\S]*?)<\/\1>/gi;
   const withoutCdata: string[] = [];
   let match;
 
-  while ((match = inputRegex.exec(content)) !== null) {
+  const scanned = withoutExampleBlocks(content);
+  while ((match = inputRegex.exec(scanned)) !== null) {
     const tagName = match[1];
     const inner = match[2];
     if (!inner.includes("<![CDATA[")) {
@@ -347,21 +366,112 @@ export function checkPseudoProgramming(content: string): CheckResult {
   };
 }
 
-export function checkRedundantNesting(content: string): CheckResult {
-  // Detect patterns like <config><task_config><primary_task> — deeply nested wrappers
-  // Heuristic: find chains of 3+ nested tags where each has only one child element
-  const patterns: string[] = [];
-
-  // Find tags that contain only a single child tag (plus whitespace)
-  const singleChildRegex = /<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>[\s]*<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>[\s]*<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>/gi;
+/**
+ * What sits directly inside this content: how many element children, and what
+ * text belongs to the element itself rather than to one of its descendants.
+ *
+ * The distinction matters. A wrapper whose only content is one child is the
+ * anti-pattern; the same wrapper with a sentence of its own beside the child is
+ * carrying information, so flattening it would lose something. Counting text
+ * anywhere inside would find the child's text and never flag anything.
+ */
+function directContent(inner: string): { children: number; text: string } {
+  const tag = /<(\/?)[a-z_][a-z0-9_]*(?:\s[^>]*?)?(\/?)>/gi;
+  let depth = 0;
+  let children = 0;
+  let text = "";
+  let cursor = 0;
   let match;
 
-  while ((match = singleChildRegex.exec(content)) !== null) {
-    const [, outer, middle, inner] = match;
-    // Check if this looks like redundant wrapper nesting
-    if (outer !== middle && middle !== inner) {
-      patterns.push(`<${outer}><${middle}><${inner}>`);
+  while ((match = tag.exec(inner)) !== null) {
+    if (depth === 0) {
+      text += inner.slice(cursor, match.index);
     }
+    const closing = match[1] === "/";
+    const selfClosing = match[2] === "/";
+    if (selfClosing) {
+      if (depth === 0) children += 1;
+    } else if (closing) {
+      depth -= 1;
+    } else {
+      if (depth === 0) children += 1;
+      depth += 1;
+    }
+    cursor = match.index + match[0].length;
+  }
+  if (depth === 0) {
+    text += inner.slice(cursor);
+  }
+
+  return { children, text: text.trim() };
+}
+
+/**
+ * Does this element wrap exactly one child and no text of its own?
+ *
+ * This is the condition the anti-pattern needs, and the one the previous
+ * version described in a comment without ever checking. Three opening tags in
+ * a row is not redundant nesting by itself: it is what every list looks like.
+ */
+function wrapsSingleChild(content: string, name: string, afterOpen: number): boolean {
+  const open = new RegExp(`<${name}(?:\\s[^>]*)?>`, "gi");
+  const close = new RegExp(`</${name}>`, "gi");
+  let depth = 1;
+  let cursor = afterOpen;
+
+  while (depth > 0 && cursor <= content.length) {
+    open.lastIndex = cursor;
+    close.lastIndex = cursor;
+    const nextOpen = open.exec(content);
+    const nextClose = close.exec(content);
+    if (!nextClose) return false;
+
+    if (nextOpen && nextOpen.index < nextClose.index) {
+      depth += 1;
+      cursor = nextOpen.index + nextOpen[0].length;
+      continue;
+    }
+
+    depth -= 1;
+    if (depth === 0) {
+      const { children, text } = directContent(content.slice(afterOpen, nextClose.index));
+      return children === 1 && text.length === 0;
+    }
+    cursor = nextClose.index + nextClose[0].length;
+  }
+  return false;
+}
+
+/**
+ * A plural container holding its own singular is a list, not a wrapper.
+ *
+ * <examples><example>, <constraints><constraint>, <checks><check>: this is the
+ * convention the book uses throughout, so flagging it told the reader to
+ * flatten the exact shape they had just been taught.
+ */
+function isListOfItems(container: string, item: string): boolean {
+  return container === `${item}s` || container === `${item}es`;
+}
+
+export function checkRedundantNesting(content: string): CheckResult {
+  // The target is a chain of wrappers that each add nothing, in the shape of
+  // <config><task_config><primary_task>. Two things have to hold: the outer
+  // element wraps a single child and no text of its own, and neither pair in
+  // the chain is a plural container holding its singular item.
+  const patterns: string[] = [];
+
+  const chain = /<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>[\s]*<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>[\s]*<([a-z_][a-z0-9_]*)(?:\s[^>]*)?>/gi;
+  let match;
+
+  while ((match = chain.exec(content)) !== null) {
+    const [whole, outer, middle, inner] = match;
+    if (outer === middle || middle === inner) continue;
+    if (isListOfItems(outer, middle) || isListOfItems(middle, inner)) continue;
+
+    const afterOuterOpen = match.index + whole.indexOf(">") + 1;
+    if (!wrapsSingleChild(content, outer, afterOuterOpen)) continue;
+
+    patterns.push(`<${outer}><${middle}><${inner}>`);
   }
 
   if (patterns.length === 0) {

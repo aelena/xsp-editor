@@ -5,6 +5,8 @@ import {
   checkEmptySections,
   checkNestingDepth,
   checkVariableDocs,
+  checkCdataForInput,
+  checkRedundantNesting,
   runVerification,
 } from "./verification.js";
 import type { VerificationContext } from "./verification.js";
@@ -202,6 +204,90 @@ describe("checkVariableDocs", () => {
     const result = checkVariableDocs(content, makeContext());
     expect(result.status).toBe("failed");
     expect(result.message).toContain("$input");
+  });
+});
+
+describe("checkCdataForInput", () => {
+  it("passes when the untrusted input is wrapped", () => {
+    const result = checkCdataForInput("<input><![CDATA[$user_input]]></input>");
+    expect(result.status).toBe("passed");
+  });
+
+  it("warns when it is not", () => {
+    const result = checkCdataForInput("<input>$user_input</input>");
+    expect(result.status).toBe("warning");
+    expect(result.message).toContain("input");
+  });
+
+  // The five templates this editor ships all failed here, and the auto-fix then
+  // wrapped a demonstration in CDATA. An <input> inside <example> is content
+  // the author wrote, not input from anybody.
+  it("ignores the input of a few-shot example", () => {
+    const content = `
+<input><![CDATA[$user_input]]></input>
+<examples>
+  <example>
+    <input>$example_input</input>
+    <output>$example_output</output>
+  </example>
+</examples>`;
+    expect(checkCdataForInput(content).status).toBe("passed");
+  });
+
+  it("still warns about a real input alongside examples", () => {
+    const content = `
+<input>$user_input</input>
+<examples><example><input>$example_input</input></example></examples>`;
+    const result = checkCdataForInput(content);
+    expect(result.status).toBe("warning");
+    // One item in the list, the real one, not the example as well.
+    expect(result.message).toContain("CDATA: input ");
+    expect(result.message).not.toContain("input, input");
+  });
+});
+
+describe("checkRedundantNesting", () => {
+  it("warns about a chain of wrappers that each hold one child", () => {
+    const content =
+      "<config><task_config><primary_task>Do it</primary_task></task_config></config>";
+    const result = checkRedundantNesting(content);
+    expect(result.status).toBe("warning");
+    expect(result.details).toContain("<config><task_config><primary_task>");
+  });
+
+  // This is the shape the book teaches, and the previous version told readers
+  // to flatten it. A plural container holding its singular is a list.
+  it("leaves a list of examples alone", () => {
+    const content = `
+<examples>
+  <example><input>a</input><output>b</output></example>
+  <example><input>c</input><output>d</output></example>
+</examples>`;
+    expect(checkRedundantNesting(content).status).toBe("passed");
+  });
+
+  it("leaves a single-example list alone too", () => {
+    const content = "<examples><example><input>a</input></example></examples>";
+    expect(checkRedundantNesting(content).status).toBe("passed");
+  });
+
+  it("leaves constraints and checks alone", () => {
+    const content = `
+<constraints><constraint id=\"c\">No medical advice</constraint></constraints>
+<checks><check>Nothing diagnostic in the output</check></checks>`;
+    expect(checkRedundantNesting(content).status).toBe("passed");
+  });
+
+  // The condition the old comment claimed and never checked.
+  it("does not warn when the outer element has text of its own", () => {
+    const content = "<outer>Some prose <middle><inner>x</inner></middle></outer>";
+    expect(checkRedundantNesting(content).status).toBe("passed");
+  });
+
+  it("does not warn when the outer element has two children", () => {
+    const content =
+      "<outer><middle><inner>x</inner></middle><sibling>y</sibling></outer>";
+    expect(checkRedundantNesting(content).status).toBe("passed");
   });
 });
 

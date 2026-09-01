@@ -1,6 +1,7 @@
 # XSP Editor
 
 <!-- badges-start -->
+[![CI](https://github.com/aelena/xsp-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/aelena/xsp-editor/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/aelena/xsp-editor?style=plastic&color=blue)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor/commits)
 [![Top Language](https://img.shields.io/github/languages/top/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor)
@@ -15,7 +16,7 @@
 [![CodeMirror](https://img.shields.io/badge/CodeMirror-6-D30707?style=plastic&logo=codemirror&logoColor=white)](https://codemirror.net/)
 
 [![Linter: ESLint](https://img.shields.io/badge/lint-eslint-4B32C3?style=plastic&logo=eslint&logoColor=white)](https://eslint.org/)
-[![Tested with Vitest](https://img.shields.io/badge/tested%20with-vitest-6E9F18?style=plastic&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/tests-vitest%2C%20server%20%2B%20client-6E9F18?style=plastic&logo=vitest&logoColor=white)](https://github.com/aelena/xsp-editor/actions/workflows/ci.yml)
 
 [![BYOK](https://img.shields.io/badge/LLM-Bring_Your_Own_Key-green?style=plastic)](#llm-integration)
 [![Issues](https://img.shields.io/github/issues/aelena/xsp-editor?style=plastic)](https://github.com/aelena/xsp-editor/issues)

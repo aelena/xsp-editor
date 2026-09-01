@@ -3,6 +3,14 @@ import { describe, it, expect } from "vitest";
 import { buildApp } from "./index.js";
 import { MemoryStorageAdapter } from "./storage/memory.js";
 import { seedDefaults } from "./seed.js";
+import { readFile, readdir } from "node:fs/promises";
+import { join, dirname, extname } from "node:path";
+import { fileURLToPath } from "node:url";
+// There is no XML parser in this project on purpose: prompt content is often
+// mid-edit and invalid, so everything here works on text. directContent is
+// the scanner the verification rules already use to count what sits directly
+// inside a piece of content, which is exactly the question here.
+import { directContent } from "./services/verification.js";
 
 async function seededApp() {
   const storage = new MemoryStorageAdapter();
@@ -38,6 +46,95 @@ describe("seedDefaults", () => {
     const { storage } = await seededApp();
     const prompts = await storage.listPrompts({ page: 1, limit: 50 });
     expect(prompts.total).toBeGreaterThan(0);
+  });
+});
+
+const TEMPLATES_DIR = join(dirname(fileURLToPath(import.meta.url)), "templates");
+
+describe("the built-in templates", () => {
+  // The book uses <prompt> as the root in 34 of its 45 examples, including
+  // 017.baseline-template.xml, which is the direct counterpart of baseline.xml.
+  // These shipped without a root, so what the editor rendered was a bag of
+  // sibling elements rather than a document, and a reader who learned <prompt>
+  // from the book opened the tool and saw a different shape.
+  it("are each a single document rooted at <prompt>", async () => {
+    const files = (await readdir(TEMPLATES_DIR)).filter((f) => extname(f) === ".xml");
+    expect(files.length).toBeGreaterThan(0);
+
+    for (const file of files) {
+      const content = await readFile(join(TEMPLATES_DIR, file), "utf-8");
+      const { children, text } = directContent(content);
+      expect(children, `${file}: top-level elements`).toBe(1);
+      expect(text, `${file}: text outside the root`).toBe("");
+      expect(content.trimStart().startsWith("<prompt>"), file).toBe(true);
+      expect(content.trimEnd().endsWith("</prompt>"), file).toBe(true);
+    }
+  });
+
+  it("are seeded with their first version recorded", async () => {
+    // Seeding used to create the template and no version, so the original was
+    // the one version nobody could get back.
+    const { storage } = await seededApp();
+    const versions = await storage.listTemplateVersions("baseline");
+    expect(versions.map((v) => v.version)).toContain("1.0.0");
+  });
+
+  it("refreshes a stale built-in, keeping what was there as a version", async () => {
+    const storage = new MemoryStorageAdapter();
+    const now = new Date().toISOString();
+    await storage.createTemplate({
+      name: "baseline",
+      description: "stale",
+      content: "<task>the old rootless shape</task>",
+      category: "general",
+      is_builtin: true,
+      version: "1.0.0",
+      created_at: now,
+      updated_at: now,
+      projects: [],
+    });
+
+    await seedDefaults(storage);
+
+    const refreshed = await storage.getTemplate("baseline");
+    expect(refreshed?.content).toContain("<prompt>");
+    expect(refreshed?.version).toBe("1.1.0");
+
+    const versions = await storage.listTemplateVersions("baseline");
+    const kept = versions.find((v) => v.version === "1.0.0");
+    expect(kept?.content).toBe("<task>the old rootless shape</task>");
+  });
+
+  it("leaves a template the user made alone", async () => {
+    const storage = new MemoryStorageAdapter();
+    const now = new Date().toISOString();
+    await storage.createTemplate({
+      name: "baseline",
+      description: "mine",
+      content: "<task>mine, and not built in</task>",
+      category: "general",
+      is_builtin: false,
+      version: "2.0.0",
+      created_at: now,
+      updated_at: now,
+      projects: [],
+    });
+
+    await seedDefaults(storage);
+
+    const untouched = await storage.getTemplate("baseline");
+    expect(untouched?.content).toBe("<task>mine, and not built in</task>");
+    expect(untouched?.version).toBe("2.0.0");
+  });
+
+  it("does not refresh on every start once it is current", async () => {
+    const storage = new MemoryStorageAdapter();
+    await seedDefaults(storage);
+    const first = await storage.getTemplate("baseline");
+    await seedDefaults(storage);
+    const second = await storage.getTemplate("baseline");
+    expect(second?.version).toBe(first?.version);
+    expect(await storage.listTemplateVersions("baseline")).toHaveLength(1);
   });
 });
 

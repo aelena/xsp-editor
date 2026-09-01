@@ -9,6 +9,11 @@ import {
   GENERAL_PROJECT_ID,
   reservedProjects,
 } from "./schemas/projects.js";
+import { incrementVersion } from "./services/versioning.js";
+// The same placeholder the audit trail uses. There is one user and no
+// accounts model behind this, so inventing a second name for the seed would
+// put two different authors in the history for the same person.
+import { LOCAL_ACTOR } from "./services/audit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(__dirname, "templates");
@@ -640,21 +645,28 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
     console.log(`Seeded ${DEFAULT_CONSTRAINTS.length} default constraints`);
   }
 
-  // Seed templates if none exist
+  // Seed templates if none exist, and refresh the built-in ones that have
+  // fallen behind the files they came from.
   const existingTemplates = await storage.listTemplates();
-  if (existingTemplates.length === 0) {
+  const templatesByName = new Map(existingTemplates.map((t) => [t.name, t]));
+  {
     const now = new Date().toISOString();
     try {
       const items = await readdir(TEMPLATES_DIR);
-      let count = 0;
+      let created = 0;
+      let refreshed = 0;
       for (const item of items) {
-        if (extname(item) === ".xml") {
-          const name = item.replace(".xml", "");
-          const content = await readFile(join(TEMPLATES_DIR, item), "utf-8");
-          const meta = TEMPLATE_DESCRIPTIONS[name] || {
-            description: "XSP template",
-            category: "general",
-          };
+        if (extname(item) !== ".xml") continue;
+
+        const name = item.replace(".xml", "");
+        const content = await readFile(join(TEMPLATES_DIR, item), "utf-8");
+        const meta = TEMPLATE_DESCRIPTIONS[name] || {
+          description: "XSP template",
+          category: "general",
+        };
+        const existing = templatesByName.get(name);
+
+        if (!existing) {
           await storage.createTemplate({
             name,
             description: meta.description,
@@ -666,10 +678,62 @@ export async function seedDefaults(storage: StorageAdapter): Promise<void> {
             updated_at: now,
             projects: [GENERAL_PROJECT_ID],
           });
-          count++;
+          // Recorded at creation so the history starts complete, the same way
+          // the create route does it. Seeding used to skip this, which left the
+          // original of every built-in as the one version nobody could get back.
+          await storage.saveTemplateVersion({
+            template_name: name,
+            version: "1.0.0",
+            content,
+            description: meta.description,
+            category: meta.category,
+            author: LOCAL_ACTOR,
+            changelog_summary: "Initial version",
+            version_bump_type: "major",
+            created_at: now,
+          });
+          created++;
+          continue;
         }
+
+        // Only the built-ins, and only when the shipped file has moved on. A
+        // template the user made is theirs, and one they edited keeps its edit:
+        // the previous content is stored as a version before the new content
+        // lands, so the refresh adds history instead of overwriting it.
+        if (!existing.is_builtin || existing.content === content) continue;
+
+        const previousVersions = await storage.listTemplateVersions(name);
+        if (!previousVersions.some((v) => v.version === existing.version)) {
+          await storage.saveTemplateVersion({
+            template_name: name,
+            version: existing.version,
+            content: existing.content,
+            description: existing.description,
+            category: existing.category,
+            author: LOCAL_ACTOR,
+            changelog_summary: "Content as it stood before the built-in was refreshed",
+            version_bump_type: "major",
+            created_at: existing.updated_at,
+          });
+        }
+
+        const version = incrementVersion(existing.version, "minor");
+        await storage.updateTemplate(name, { content, version, updated_at: now });
+        await storage.saveTemplateVersion({
+          template_name: name,
+          version,
+          content,
+          description: existing.description,
+          category: existing.category,
+          author: LOCAL_ACTOR,
+          changelog_summary: "Refreshed from the built-in template shipped with this version",
+          version_bump_type: "minor",
+          created_at: now,
+        });
+        refreshed++;
       }
-      console.log(`Seeded ${count} built-in templates`);
+      if (created > 0) console.log(`Seeded ${created} built-in templates`);
+      if (refreshed > 0) console.log(`Refreshed ${refreshed} built-in templates`);
     } catch {
       console.warn("Could not read templates directory for seeding");
     }

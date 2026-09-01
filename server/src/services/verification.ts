@@ -375,7 +375,7 @@ export function checkPseudoProgramming(content: string): CheckResult {
  * carrying information, so flattening it would lose something. Counting text
  * anywhere inside would find the child's text and never flag anything.
  */
-function directContent(inner: string): { children: number; text: string } {
+export function directContent(inner: string): { children: number; text: string } {
   const tag = /<(\/?)[a-z_][a-z0-9_]*(?:\s[^>]*?)?(\/?)>/gi;
   let depth = 0;
   let children = 0;
